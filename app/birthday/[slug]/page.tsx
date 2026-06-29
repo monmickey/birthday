@@ -5,26 +5,30 @@ import { useParams, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { FaChevronDown } from "react-icons/fa";
 
-// Backgrounds & Globals
-import Particles from "@/components/particles";
-import BackgroundDecorations from "@/components/background-decorations";
+import dynamic from "next/dynamic";
+
+// Backgrounds & Globals (Dynamically loaded on client)
+const Particles = dynamic(() => import("@/components/particles"), { ssr: false });
+const BackgroundDecorations = dynamic(() => import("@/components/background-decorations"), { ssr: false });
 import CustomCursor from "@/components/cursor";
 import ThemeToggle from "@/components/theme-toggle";
 
 // Setup Stages
 import PasscodeScreen from "@/components/passcode-screen";
 import CountdownScreen from "@/components/countdown-screen";
-import CameraGallery from "@/components/camera-gallery";
-import MemoryTimeline from "@/components/memory-timeline";
-import CakeSlice from "@/components/cake-slice";
-import BirthdayLetter from "@/components/birthday-letter";
-import WishesWall from "@/components/wishes-wall";
-import FinalCelebration from "@/components/final-celebration";
-import MusicPlayer from "@/components/music-player";
+
+// Post-unlock sections loaded dynamically
+const CameraGallery = dynamic(() => import("@/components/camera-gallery"), { ssr: false });
+const MemoryTimeline = dynamic(() => import("@/components/memory-timeline"), { ssr: false });
+const CakeSlice = dynamic(() => import("@/components/cake-slice"), { ssr: false });
+const BirthdayLetter = dynamic(() => import("@/components/birthday-letter"), { ssr: false });
+const WishesWall = dynamic(() => import("@/components/wishes-wall"), { ssr: false });
+const FinalCelebration = dynamic(() => import("@/components/final-celebration"), { ssr: false });
+
 
 // Hooks & Database
 import { useAudio } from "@/hooks/useAudio";
-import { getBirthdayPage, readFromLocalStorage } from "@/lib/supabase";
+import { getBirthdayPage, getBirthdayPageLight, readFromLocalStorage } from "@/lib/supabase";
 import { parseBirthdayDate } from "@/lib/date";
 import { BirthdayConfig } from "@/config/types";
 
@@ -59,7 +63,7 @@ function BirthdayPageContent() {
     }
   }, [isDark]);
 
-  // Dynamic config fetch with SWR Cache-First loading pattern
+  // Dynamic config fetch with SWR Cache-First loading pattern + Light/Full 2-phase load
   useEffect(() => {
     let active = true;
 
@@ -73,12 +77,30 @@ function BirthdayPageContent() {
         setLoading(true);
       }
 
-      // 2. Fetch fresh data from database in background
+      // 2. Fetch lightweight configuration first to render passcode screen immediately
       try {
-        const data = await getBirthdayPage(slug);
+        const lightData = await getBirthdayPageLight(slug);
         if (active) {
-          setConfig(data);
+          setConfig((prev) => {
+            // Keep cached heavy arrays if they are already present
+            if (prev && (prev.photos.length > 0 || prev.music.bgMusicUrl)) {
+              return {
+                ...lightData,
+                photos: prev.photos,
+                timeline: prev.timeline,
+                wishes: prev.wishes,
+                music: prev.music,
+              };
+            }
+            return lightData;
+          });
           setLoading(false);
+        }
+
+        // 3. Fetch heavy assets in the background
+        const fullData = await getBirthdayPage(slug);
+        if (active) {
+          setConfig(fullData);
         }
       } catch (err) {
         console.error("Supabase dynamic page fetch error:", err);
@@ -214,16 +236,7 @@ function BirthdayPageContent() {
             transition={{ duration: 1 }}
             className="relative w-full flex flex-col items-center"
           >
-            {/* SECTION 2: Welcome Intro */}
-            <MusicPlayer
-              isPlaying={isPlayingBg}
-              isMuted={isMuted}
-              volume={volume}
-              audioError={audioError}
-              onTogglePlay={isPlayingBg ? pauseBgMusic : playBgMusic}
-              onToggleMute={toggleMute}
-              onVolumeChange={setVolume}
-            />
+
 
             <section className="min-h-screen w-full flex flex-col items-center justify-center text-center px-4 relative">
               <div className="absolute left-[10%] bottom-[12%] z-10 hidden sm:block">

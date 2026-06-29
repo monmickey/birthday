@@ -130,3 +130,12 @@ VALUES (
   '{"animationsEnabled": true, "confettiEnabled": true, "fireworksEnabled": true}'
 )
 ON CONFLICT (slug) DO NOTHING;
+
+-- ============================================================
+-- 5. Performance Optimization Indexes
+-- Optimize JOINs and filtering on foreign key columns
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_photos_page_id ON photos(page_id);
+CREATE INDEX IF NOT EXISTS idx_messages_page_id ON messages(page_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_page_id ON timeline(page_id);
+

@@ -369,6 +369,8 @@ export default function FinalCelebration({ recipientName, onReplay, playSfx }: F
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(shareLink)}`}
                   alt="QR Code"
+                  loading="lazy"
+                  decoding="async"
                   className="w-32 h-32"
                 />
               </div>

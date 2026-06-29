@@ -163,6 +163,8 @@ export default function CameraGallery({ photos = [], playSfx }: CameraGalleryPro
                 <img
                   src={item.url}
                   alt={item.title}
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover object-center"
                 />
               </div>

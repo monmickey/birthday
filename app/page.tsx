@@ -5,27 +5,31 @@ import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { FaChevronDown } from "react-icons/fa";
 
-// Backgrounds & Globals
-import Particles from "@/components/particles";
-import BackgroundDecorations from "@/components/background-decorations";
+import dynamic from "next/dynamic";
+
+// Backgrounds & Globals (Dynamically loaded on client)
+const Particles = dynamic(() => import("@/components/particles"), { ssr: false });
+const BackgroundDecorations = dynamic(() => import("@/components/background-decorations"), { ssr: false });
 import CustomCursor from "@/components/cursor";
 import ThemeToggle from "@/components/theme-toggle";
 
 // Setup Stages
 import PasscodeScreen from "@/components/passcode-screen";
 import CountdownScreen from "@/components/countdown-screen";
-import CameraGallery from "@/components/camera-gallery";
-import MemoryTimeline from "@/components/memory-timeline";
-import CakeSlice from "@/components/cake-slice";
-import BirthdayLetter from "@/components/birthday-letter";
-import WishesWall from "@/components/wishes-wall";
-import FinalCelebration from "@/components/final-celebration";
-import MusicPlayer from "@/components/music-player";
+
+// Post-unlock sections loaded dynamically
+const CameraGallery = dynamic(() => import("@/components/camera-gallery"), { ssr: false });
+const MemoryTimeline = dynamic(() => import("@/components/memory-timeline"), { ssr: false });
+const CakeSlice = dynamic(() => import("@/components/cake-slice"), { ssr: false });
+const BirthdayLetter = dynamic(() => import("@/components/birthday-letter"), { ssr: false });
+const WishesWall = dynamic(() => import("@/components/wishes-wall"), { ssr: false });
+const FinalCelebration = dynamic(() => import("@/components/final-celebration"), { ssr: false });
+
 
 // Hooks
 import { useAudio } from "@/hooks/useAudio";
 import configData from "@/config/birthday-config.json";
-import { getBirthdayPage, readFromLocalStorage } from "@/lib/supabase";
+import { getBirthdayPage, getBirthdayPageLight, readFromLocalStorage } from "@/lib/supabase";
 import { parseBirthdayDate } from "@/lib/date";
 import { BirthdayConfig } from "@/config/types";
 
@@ -69,8 +73,10 @@ function HomeContent() {
     if (dateParam) setTargetDate(dateParam);
   }, [searchParams]);
 
-  // Load saved config with cache-first SWR pattern to eliminate loading delays
+  // Load saved config with cache-first SWR pattern to eliminate loading delays + Light/Full 2-phase load
   useEffect(() => {
+    let active = true;
+
     // 1. Instantly apply local storage cached values on mount
     const cached = readFromLocalStorage("default");
     if (cached) {
@@ -80,15 +86,35 @@ function HomeContent() {
       setMusicConfig(cached.music);
     }
 
-    // 2. Fetch latest configurations from database in background
-    getBirthdayPage("default").then((cfg) => {
-      setFriendName(cfg.recipientName);
-      if (cfg.secretCode) setSecretCode(cfg.secretCode);
-      if (cfg.birthdayDate) setTargetDate(cfg.birthdayDate);
-      setMusicConfig(cfg.music);
-    }).catch(err => {
-      console.error("Supabase root page background fetch error:", err);
-    });
+    // 2. Fetch lightweight configurations from database first
+    getBirthdayPageLight("default")
+      .then((lightCfg) => {
+        if (!active) return;
+        setFriendName(lightCfg.recipientName);
+        if (lightCfg.secretCode) setSecretCode(lightCfg.secretCode);
+        if (lightCfg.birthdayDate) setTargetDate(lightCfg.birthdayDate);
+        
+        if (!cached || !cached.music.bgMusicUrl) {
+          setMusicConfig(lightCfg.music);
+        }
+
+        // 3. Fetch heavy configurations in background
+        return getBirthdayPage("default");
+      })
+      .then((fullCfg) => {
+        if (!active || !fullCfg) return;
+        setFriendName(fullCfg.recipientName);
+        if (fullCfg.secretCode) setSecretCode(fullCfg.secretCode);
+        if (fullCfg.birthdayDate) setTargetDate(fullCfg.birthdayDate);
+        setMusicConfig(fullCfg.music);
+      })
+      .catch((err) => {
+        console.error("Supabase root page background fetch error:", err);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleUnlockSuccess = () => {
@@ -183,16 +209,7 @@ function HomeContent() {
             transition={{ duration: 1 }}
             className="relative w-full flex flex-col items-center"
           >
-            {/* SECTION 2: Welcome Intro Section */}
-            <MusicPlayer
-              isPlaying={isPlayingBg}
-              isMuted={isMuted}
-              volume={volume}
-              audioError={audioError}
-              onTogglePlay={isPlayingBg ? pauseBgMusic : playBgMusic}
-              onToggleMute={toggleMute}
-              onVolumeChange={setVolume}
-            />
+
 
             <section className="min-h-screen w-full flex flex-col items-center justify-center text-center px-4 relative">
               {/* Gift decal sticker bottom left */}

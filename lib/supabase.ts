@@ -157,6 +157,51 @@ export async function testSupabaseConnection(): Promise<{
 }
 
 // ============================================================
+// getBirthdayPageLight
+// ============================================================
+export async function getBirthdayPageLight(slug: string): Promise<BirthdayConfig> {
+  console.log(`[getBirthdayPageLight] Called for slug: "${slug}"`);
+  if (!isSupabaseConfigured || !supabaseClient) {
+    console.log(`[getBirthdayPageLight] Supabase not configured. Using fallback config.`);
+    return readFromLocalStorage(slug) ?? buildDefault();
+  }
+
+  try {
+    console.log(`[getBirthdayPageLight] Fetching main page row from Supabase (light)...`);
+    const { data: page, error: pageError } = await supabaseClient
+      .from("birthday_pages")
+      .select("id, slug, recipient_name, secret_code, birthday_date, theme, personal_letter, settings")
+      .eq("slug", slug)
+      .single();
+
+    if (pageError || !page) {
+      console.warn(`[getBirthdayPageLight] Page row not found or error. pageError:`, pageError);
+      return readFromLocalStorage(slug) ?? buildDefault();
+    }
+
+    return {
+      recipientName: page.recipient_name,
+      secretCode: page.secret_code || "0541",
+      birthdayDate: page.birthday_date,
+      theme: page.theme,
+      music: normalizeMusic(null), // Empty music to bypass huge base64 payload
+      photos: [],
+      wishes: [],
+      timeline: [],
+      personalLetter: page.personal_letter,
+      cakeStyle: {
+        layers: page.theme?.layers || 3,
+        frostingColor: page.theme?.frostingColor || "#ec4899",
+        candleCount: page.theme?.candleCount || 5,
+      },
+    };
+  } catch (error: any) {
+    console.error("[getBirthdayPageLight] Exception caught:", error?.message || error);
+    return readFromLocalStorage(slug) ?? buildDefault();
+  }
+}
+
+// ============================================================
 // getBirthdayPage
 // ============================================================
 export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
@@ -168,12 +213,25 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
   }
 
   try {
-    console.log(`[getBirthdayPage] Fetching main page row from Supabase...`);
-    // 1. Fetch main page details
+    console.log(`[getBirthdayPage] Fetching main page and child tables in a single joined query...`);
     const { data: page, error: pageError } = await supabaseClient
       .from("birthday_pages")
-      .select("*")
+      .select(`
+        id,
+        recipient_name,
+        secret_code,
+        birthday_date,
+        theme,
+        music,
+        personal_letter,
+        photos(id, url, title, description, date),
+        messages(text, sender),
+        timeline(date, title, description, image)
+      `)
       .eq("slug", slug)
+      .order("created_at", { referencedTable: "photos", ascending: true })
+      .order("created_at", { referencedTable: "messages", ascending: true })
+      .order("created_at", { referencedTable: "timeline", ascending: true })
       .single();
 
     if (pageError || !page) {
@@ -181,18 +239,10 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
       return readFromLocalStorage(slug) ?? buildDefault();
     }
 
-    console.log(`[getBirthdayPage] Main page row fetched successfully. ID: ${page.id}. Fetching child tables...`);
-    // 2, 3, 4. Fetch linked child tables in parallel using Promise.all to optimize load times
-    const [photosResult, messagesResult, timelineResult] = await Promise.all([
-      supabaseClient.from("photos").select("*").eq("page_id", page.id).order("created_at", { ascending: true }),
-      supabaseClient.from("messages").select("*").eq("page_id", page.id).order("created_at", { ascending: true }),
-      supabaseClient.from("timeline").select("*").eq("page_id", page.id).order("created_at", { ascending: true }),
-    ]);
-
-    const photos = photosResult.data || [];
-    const messages = messagesResult.data || [];
-    const timeline = timelineResult.data || [];
-    console.log(`[getBirthdayPage] Child tables fetched. Photos: ${photos.length}, Wishes: ${messages.length}, Timeline: ${timeline.length}`);
+    const photos = page.photos || [];
+    const messages = page.messages || [];
+    const timeline = page.timeline || [];
+    console.log(`[getBirthdayPage] Combined data fetched successfully. Photos: ${photos.length}, Wishes: ${messages.length}, Timeline: ${timeline.length}`);
 
     return {
       recipientName: page.recipient_name,

@@ -1,10 +1,43 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { FaHome, FaImage, FaHeart, FaMusic, FaCheck, FaTrash, FaLink, FaCalendarAlt, FaSlidersH, FaUser, FaKey, FaEye, FaEyeSlash, FaVolumeUp } from "react-icons/fa";
-import { getBirthdayPage, saveBirthdayPage } from "@/lib/supabase";
+import { FaHome, FaImage, FaHeart, FaCheck, FaTrash, FaLink, FaCalendarAlt, FaSlidersH, FaUser, FaKey, FaEye, FaEyeSlash } from "react-icons/fa";
+import { getBirthdayPage, getBirthdayPageLight, saveBirthdayPage } from "@/lib/supabase";
 import { formatDateTimeLocalValue } from "@/lib/date";
 import { BirthdayConfig, PhotoItem, WishItem, TimelineItem } from "@/config/types";
+
+const compressImage = (base64Str: string, maxWidth = 1000, quality = 0.7): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(base64Str);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      const compressed = canvas.toDataURL("image/jpeg", quality);
+      resolve(compressed);
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+  });
+};
 
 type TabType = "general" | "photos" | "timeline" | "wishes" | "letter" | "theme" | "settings";
 
@@ -13,6 +46,7 @@ export default function AdminDashboard() {
   const [slug, setSlug] = useState("default");
   const [config, setConfig] = useState<BirthdayConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fullLoading, setFullLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showSecretCode, setShowSecretCode] = useState(false);
@@ -23,17 +57,44 @@ export default function AdminDashboard() {
   const [newWish, setNewWish] = useState<Partial<WishItem>>({ text: "", sender: "" });
 
   useEffect(() => {
+    let active = true;
     async function loadData() {
       setLoading(true);
-      const data = await getBirthdayPage(slug);
-      setConfig(data);
-      setLoading(false);
+      setFullLoading(true);
+      try {
+        // Phase 1: Fetch light settings first to render form fields immediately
+        const lightData = await getBirthdayPageLight(slug);
+        if (active) {
+          setConfig(lightData);
+          setLoading(false);
+        }
+
+        // Phase 2: Fetch heavy arrays (photos/timeline/music) in background
+        const fullData = await getBirthdayPage(slug);
+        if (active) {
+          setConfig(fullData);
+          setFullLoading(false);
+        }
+      } catch (err) {
+        console.error("Admin dashboard config fetch error:", err);
+        if (active) {
+          setLoading(false);
+          setFullLoading(false);
+        }
+      }
     }
     loadData();
+    return () => {
+      active = false;
+    };
   }, [slug]);
 
   const handleSave = async () => {
     if (!config) return;
+    if (fullLoading) {
+      alert("Please wait for all configurations and heavy assets (photos/music) to finish loading before saving.");
+      return;
+    }
     if (!/^\d{4}$/.test(config.secretCode || "")) {
       alert("Secret passcode must be exactly 4 digits.");
       return;
@@ -50,7 +111,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Helper to convert files to base64
+  // Helper to convert files to base64 with client-side canvas compression
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     type: "photo" | "timeline"
@@ -59,44 +120,28 @@ export default function AdminDashboard() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const base64String = reader.result as string;
-      if (type === "photo") {
-        setNewPhoto((prev) => ({ ...prev, url: base64String }));
-      } else {
-        setNewTimeline((prev) => ({ ...prev, image: base64String }));
+      try {
+        const compressedBase64 = await compressImage(base64String, 1000, 0.7);
+        if (type === "photo") {
+          setNewPhoto((prev) => ({ ...prev, url: compressedBase64 }));
+        } else {
+          setNewTimeline((prev) => ({ ...prev, image: compressedBase64 }));
+        }
+      } catch (err) {
+        console.error("Failed to compress image client-side, using original file", err);
+        if (type === "photo") {
+          setNewPhoto((prev) => ({ ...prev, url: base64String }));
+        } else {
+          setNewTimeline((prev) => ({ ...prev, image: base64String }));
+        }
       }
     };
     reader.readAsDataURL(file);
   };
 
-  // Helper to convert & save local audio files to base64
-  const handleAudioUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    targetKey: "bgMusicUrl" | "clickSfx" | "giftOpenSfx" | "confettiSfx" | "fireworksSfx"
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert("Audio file is quite large (over 8MB). Uploading may take longer and hit storage limits.");
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      if (config) {
-        setConfig({
-          ...config,
-          music: {
-            ...config.music,
-            [targetKey]: base64String,
-          },
-        });
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Photo management
   const addPhoto = () => {
@@ -215,7 +260,7 @@ export default function AdminDashboard() {
               { id: "timeline", label: "Journey Timeline", icon: <FaCalendarAlt /> },
               { id: "wishes", label: "Wishes Wall", icon: <FaHeart /> },
               { id: "letter", label: "Message Letter", icon: <FaHome /> },
-              { id: "theme", label: "Theme & Music", icon: <FaMusic /> },
+              { id: "theme", label: "Theme Settings", icon: <FaSlidersH /> },
               { id: "settings", label: "Passcode & Toggles", icon: <FaSlidersH /> },
             ].map((tab) => (
               <button
@@ -236,11 +281,13 @@ export default function AdminDashboard() {
         <div className="mt-8 md:mt-0 space-y-3">
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || fullLoading}
             className="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs tracking-wider uppercase shadow-lg cursor-pointer flex items-center justify-center gap-2 hover:brightness-110 disabled:opacity-50"
           >
             {saving ? (
               "Saving..."
+            ) : fullLoading ? (
+              "Syncing database..."
             ) : saveSuccess ? (
               <>
                 <FaCheck /> Saved Page
@@ -267,9 +314,16 @@ export default function AdminDashboard() {
         <div className="w-full max-w-7xl mx-auto">
           {/* Header Info */}
           <div className="mb-10 flex flex-col md:flex-row md:items-baseline justify-between gap-2 pb-6 border-b border-white/5">
-            <h1 className="text-2xl md:text-3xl font-black text-white capitalize">
-              {activeTab} Settings
-            </h1>
+            <div className="flex flex-col md:flex-row md:items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-black text-white capitalize">
+                {activeTab} Settings
+              </h1>
+              {fullLoading && (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 animate-pulse inline-block w-fit">
+                  ⚡ Syncing database...
+                </span>
+              )}
+            </div>
             <span className="text-xs text-white/40 font-mono">
               Configuring URL: /birthday/{slug}
             </span>
@@ -671,149 +725,7 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-secondary/15 border border-secondary/20 text-secondary flex items-center justify-center">
-                    <FaMusic size={14} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Music Setup</h3>
-                    <p className="text-xs text-white/50 mt-1">Choose the background track and the starting volume for visitors.</p>
-                  </div>
-                </div>
 
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-xs uppercase font-bold tracking-widest text-white/50 block">
-                      Background Music Audio URL / File
-                    </label>
-                    <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold uppercase">
-                      Supports URL or Local File
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={config.music.bgMusicUrl?.startsWith("data:") ? "[Uploaded Local Audio File]" : config.music.bgMusicUrl || ""}
-                      onChange={(e) =>
-                        setConfig({
-                          ...config,
-                          music: { ...config.music, bgMusicUrl: e.target.value },
-                        })
-                      }
-                      className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-mono"
-                      placeholder="https://example.com/song.mp3 or upload below"
-                    />
-                    <div className="flex items-center gap-3">
-                      <label className="flex-1 py-3 px-4 rounded-xl border border-dashed border-white/10 hover:border-primary/50 bg-white/5 text-center text-xs font-bold text-white/60 hover:text-white cursor-pointer transition-all flex items-center justify-center gap-2">
-                        <span>📤 Upload Local Audio File</span>
-                        <input
-                          type="file"
-                          accept="audio/*"
-                          onChange={(e) => handleAudioUpload(e, "bgMusicUrl")}
-                          className="hidden"
-                        />
-                      </label>
-                      {config.music.bgMusicUrl?.startsWith("data:") && (
-                        <button
-                          type="button"
-                          onClick={() => setConfig({ ...config, music: { ...config.music, bgMusicUrl: "" } })}
-                          className="py-3 px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/25 font-bold text-xs uppercase cursor-pointer transition-all"
-                        >
-                          Clear File
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-white/40 mt-2">
-                    Use a direct audio file URL such as MP3, WAV, or OGG, or upload a local file. YouTube watch links will not play.
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <label className="text-xs uppercase font-bold tracking-widest text-white/50">
-                      Default Music Volume
-                    </label>
-                    <span className="text-xs text-white/70 font-mono flex items-center gap-2">
-                      <FaVolumeUp size={12} />
-                      {Math.round((config.music.bgMusicVolume ?? 0.4) * 100)}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={Math.round((config.music.bgMusicVolume ?? 0.4) * 100)}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        music: {
-                          ...config.music,
-                          bgMusicVolume: Number(e.target.value) / 100,
-                        },
-                      })
-                    }
-                    className="w-full accent-primary cursor-pointer"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  {[
-                    { label: "Click SFX", key: "clickSfx" },
-                    { label: "Gift Open SFX", key: "giftOpenSfx" },
-                    { label: "Confetti SFX", key: "confettiSfx" },
-                    { label: "Fireworks SFX", key: "fireworksSfx" },
-                  ].map((item) => {
-                    const value = config.music[item.key as keyof typeof config.music] as string;
-                    const isBase64 = value?.startsWith("data:");
-                    return (
-                      <div key={item.key} className="space-y-2">
-                        <label className="text-[10px] uppercase font-bold tracking-widest text-white/45 block mb-1">
-                          {item.label}
-                        </label>
-                        <input
-                          type="text"
-                          value={isBase64 ? "[Uploaded Local SFX File]" : value || ""}
-                          onChange={(e) =>
-                            setConfig({
-                              ...config,
-                              music: { ...config.music, [item.key]: e.target.value },
-                            })
-                          }
-                          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-xs font-mono"
-                          placeholder="Paste URL or upload below"
-                        />
-                        <div className="flex gap-2">
-                          <label className="flex-1 py-2 px-3 rounded-lg border border-dashed border-white/10 hover:border-primary/50 bg-white/5 text-center text-[10px] font-bold text-white/50 hover:text-white cursor-pointer transition-all flex items-center justify-center gap-1.5">
-                            <span>📤 Upload File</span>
-                            <input
-                              type="file"
-                              accept="audio/*"
-                              onChange={(e) => handleAudioUpload(e, item.key as any)}
-                              className="hidden"
-                            />
-                          </label>
-                          {isBase64 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setConfig({
-                                  ...config,
-                                  music: { ...config.music, [item.key]: "" },
-                                })
-                              }
-                              className="px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/25 font-bold text-[10px] uppercase cursor-pointer"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           )}
 
