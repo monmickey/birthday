@@ -28,8 +28,8 @@ const FinalCelebration = dynamic(() => import("@/components/final-celebration"),
 
 // Hooks
 import { useAudio } from "@/hooks/useAudio";
+import { getBirthdayPage, getBirthdayPageLight } from "@/lib/supabase";
 import configData from "@/config/birthday-config.json";
-import { getBirthdayPage, getBirthdayPageLight, readFromLocalStorage } from "@/lib/supabase";
 import { parseBirthdayDate } from "@/lib/date";
 import { BirthdayConfig } from "@/config/types";
 
@@ -73,32 +73,20 @@ function HomeContent() {
     if (dateParam) setTargetDate(dateParam);
   }, [searchParams]);
 
-  // Load saved config with cache-first SWR pattern to eliminate loading delays + Light/Full 2-phase load
+  // Load saved config with dynamic 2-phase load directly from database
   useEffect(() => {
     let active = true;
 
-    // 1. Instantly apply local storage cached values on mount
-    const cached = readFromLocalStorage("default");
-    if (cached) {
-      setFriendName(cached.recipientName);
-      if (cached.secretCode) setSecretCode(cached.secretCode);
-      if (cached.birthdayDate) setTargetDate(cached.birthdayDate);
-      setMusicConfig(cached.music);
-    }
-
-    // 2. Fetch lightweight configurations from database first
+    // 1. Fetch lightweight configurations from database first
     getBirthdayPageLight("default")
       .then((lightCfg) => {
         if (!active) return;
         setFriendName(lightCfg.recipientName);
         if (lightCfg.secretCode) setSecretCode(lightCfg.secretCode);
         if (lightCfg.birthdayDate) setTargetDate(lightCfg.birthdayDate);
-        
-        if (!cached || !cached.music.bgMusicUrl) {
-          setMusicConfig(lightCfg.music);
-        }
+        setMusicConfig(lightCfg.music);
 
-        // 3. Fetch heavy configurations in background
+        // 2. Fetch heavy configurations in background
         return getBirthdayPage("default");
       })
       .then((fullCfg) => {

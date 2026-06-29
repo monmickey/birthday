@@ -28,7 +28,7 @@ const FinalCelebration = dynamic(() => import("@/components/final-celebration"),
 
 // Hooks & Database
 import { useAudio } from "@/hooks/useAudio";
-import { getBirthdayPage, getBirthdayPageLight, readFromLocalStorage } from "@/lib/supabase";
+import { getBirthdayPage, getBirthdayPageLight } from "@/lib/supabase";
 import { parseBirthdayDate } from "@/lib/date";
 import { BirthdayConfig } from "@/config/types";
 
@@ -63,41 +63,22 @@ function BirthdayPageContent() {
     }
   }, [isDark]);
 
-  // Dynamic config fetch with SWR Cache-First loading pattern + Light/Full 2-phase load
+  // Dynamic config fetch with dynamic 2-phase load directly from database
   useEffect(() => {
     let active = true;
 
     async function loadData() {
-      // 1. Instantly load from localStorage if cached to bypass loading spinner
-      const cached = readFromLocalStorage(slug);
-      if (cached) {
-        setConfig(cached);
-        setLoading(false);
-      } else {
-        setLoading(true);
-      }
+      setLoading(true);
 
-      // 2. Fetch lightweight configuration first to render passcode screen immediately
+      // 1. Fetch lightweight configuration first to render passcode screen immediately
       try {
         const lightData = await getBirthdayPageLight(slug);
         if (active) {
-          setConfig((prev) => {
-            // Keep cached heavy arrays if they are already present
-            if (prev && (prev.photos.length > 0 || prev.music.bgMusicUrl)) {
-              return {
-                ...lightData,
-                photos: prev.photos,
-                timeline: prev.timeline,
-                wishes: prev.wishes,
-                music: prev.music,
-              };
-            }
-            return lightData;
-          });
+          setConfig(lightData);
           setLoading(false);
         }
 
-        // 3. Fetch heavy assets in the background
+        // 2. Fetch heavy assets in the background
         const fullData = await getBirthdayPage(slug);
         if (active) {
           setConfig(fullData);

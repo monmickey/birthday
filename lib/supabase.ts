@@ -52,58 +52,7 @@ if (process.env.NODE_ENV !== "production") {
   globalForSupabase.supabaseClient = supabaseClient;
 }
 
-// LocalStorage Helper Keys
-const LOCAL_STORAGE_KEY_PREFIX = "birthday_surprise_page_";
 
-/** Read from localStorage (client-side only) */
-export function readFromLocalStorage(slug: string): BirthdayConfig | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`);
-    return stored ? (JSON.parse(stored) as BirthdayConfig) : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Write to localStorage (client-side only) with QuotaExceeded fallback */
-function writeToLocalStorage(slug: string, config: BirthdayConfig): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`, JSON.stringify(config));
-  } catch (error) {
-    console.warn("localStorage quota exceeded. Attempting to save configuration without large local files.", error);
-    try {
-      // Create a deep copy and strip large base64 strings to save space
-      const strippedConfig = JSON.parse(JSON.stringify(config)) as BirthdayConfig;
-
-      if (strippedConfig.music.bgMusicUrl?.startsWith("data:")) {
-        strippedConfig.music.bgMusicUrl = "";
-      }
-      const sfxKeys: Array<keyof typeof strippedConfig.music> = ["clickSfx", "giftOpenSfx", "confettiSfx", "fireworksSfx"];
-      sfxKeys.forEach((key) => {
-        if (typeof strippedConfig.music[key] === "string" && strippedConfig.music[key].startsWith("data:")) {
-          (strippedConfig.music as any)[key] = "";
-        }
-      });
-
-      strippedConfig.photos = strippedConfig.photos.map((p) => ({
-        ...p,
-        url: p.url.startsWith("data:") ? "" : p.url,
-      }));
-
-      strippedConfig.timeline = strippedConfig.timeline.map((t) => ({
-        ...t,
-        image: t.image.startsWith("data:") ? "" : t.image,
-      }));
-
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`, JSON.stringify(strippedConfig));
-      console.log("Cached stripped text configuration successfully to localStorage.");
-    } catch (innerError) {
-      console.error("Failed to write stripped fallback to localStorage:", innerError);
-    }
-  }
-}
 
 /** Build the default config with correct secretCode */
 function buildDefault(): BirthdayConfig {
@@ -163,7 +112,7 @@ export async function getBirthdayPageLight(slug: string): Promise<BirthdayConfig
   console.log(`[getBirthdayPageLight] Called for slug: "${slug}"`);
   if (!isSupabaseConfigured || !supabaseClient) {
     console.log(`[getBirthdayPageLight] Supabase not configured. Using fallback config.`);
-    return readFromLocalStorage(slug) ?? buildDefault();
+    return buildDefault();
   }
 
   try {
@@ -176,7 +125,7 @@ export async function getBirthdayPageLight(slug: string): Promise<BirthdayConfig
 
     if (pageError || !page) {
       console.warn(`[getBirthdayPageLight] Page row not found or error. pageError:`, pageError);
-      return readFromLocalStorage(slug) ?? buildDefault();
+      return buildDefault();
     }
 
     return {
@@ -197,7 +146,7 @@ export async function getBirthdayPageLight(slug: string): Promise<BirthdayConfig
     };
   } catch (error: any) {
     console.error("[getBirthdayPageLight] Exception caught:", error?.message || error);
-    return readFromLocalStorage(slug) ?? buildDefault();
+    return buildDefault();
   }
 }
 
@@ -206,10 +155,10 @@ export async function getBirthdayPageLight(slug: string): Promise<BirthdayConfig
 // ============================================================
 export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
   console.log(`[getBirthdayPage] Called for slug: "${slug}"`);
-  // --- No Supabase configured: use localStorage ---
+  // --- No Supabase configured: use fallback config ---
   if (!isSupabaseConfigured || !supabaseClient) {
     console.log(`[getBirthdayPage] Supabase not configured. Using fallback config.`);
-    return readFromLocalStorage(slug) ?? buildDefault();
+    return buildDefault();
   }
 
   try {
@@ -236,7 +185,7 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
 
     if (pageError || !page) {
       console.warn(`[getBirthdayPage] Page row not found or error. pageError:`, pageError);
-      return readFromLocalStorage(slug) ?? buildDefault();
+      return buildDefault();
     }
 
     const photos = page.photos || [];
@@ -276,8 +225,7 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
     };
   } catch (error: any) {
     console.error("[getBirthdayPage] Exception caught:", error?.message || error);
-    // Always fall back to localStorage, never crash
-    return readFromLocalStorage(slug) ?? buildDefault();
+    return buildDefault();
   }
 }
 
@@ -290,12 +238,9 @@ export async function saveBirthdayPage(
 ): Promise<boolean> {
   // --- No Supabase configured: save to localStorage only ---
   if (!isSupabaseConfigured || !supabaseClient) {
-    writeToLocalStorage(slug, config);
-    return true;
+    console.error("Supabase not configured. Cannot save.");
+    return false;
   }
-
-  // Always mirror to localStorage as instant offline cache
-  writeToLocalStorage(slug, config);
 
   try {
     const pagePayload = {
