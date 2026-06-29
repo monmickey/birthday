@@ -17,28 +17,88 @@ function getSafeVolume(volume?: number) {
   return Math.min(1, Math.max(0, volume));
 }
 
+function normalizeAudioUrl(value?: string) {
+  if (!value) return "";
+
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    const parsed = new URL(trimmed);
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (hostname.includes("drive.google.com")) {
+      const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+      const id = fileMatch?.[1] || parsed.searchParams.get("id");
+      if (id) {
+        return `https://drive.google.com/uc?export=download&id=${id}`;
+      }
+    }
+
+    if (hostname.includes("dropbox.com")) {
+      const params = new URLSearchParams(parsed.search);
+      params.set("raw", "1");
+      parsed.search = params.toString();
+      return parsed.toString();
+    }
+
+    return parsed.toString();
+  } catch {
+    return trimmed;
+  }
+}
+
+function getAudioErrorMessage(url: string) {
+  if (!url) {
+    return "No background audio URL is configured.";
+  }
+
+  if (/youtube\.com|youtu\.be/i.test(url)) {
+    return "YouTube links won’t play as background audio here. Use a direct MP3, WAV, or OGG file URL instead.";
+  }
+
+  return "The audio URL could not be loaded. Please use a direct MP3, WAV, or OGG file link.";
+}
+
 export function useAudio(musicConfig: MusicConfig = configData.music) {
   const [isPlayingBg, setIsPlayingBg] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [customVolume, setCustomVolume] = useState<number | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const volume = customVolume ?? getSafeVolume(musicConfig.bgMusicVolume);
-  
+
   const bgMusicRef = useRef<Howl | null>(null);
   const sfxRefs = useRef<{ [key: string]: Howl }>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const initialVolume = getSafeVolume(musicConfig.bgMusicVolume);
 
-    // Load Background Music
+    const initialVolume = getSafeVolume(musicConfig.bgMusicVolume);
+    const resolvedAudioUrl = normalizeAudioUrl(musicConfig.bgMusicUrl);
+
+    if (!resolvedAudioUrl) {
+      setAudioError("No background audio URL is configured.");
+      return;
+    }
+
+    setAudioError(null);
+
     bgMusicRef.current = new Howl({
-      src: [musicConfig.bgMusicUrl],
-      html5: true, // play larger files without buffering
+      src: [resolvedAudioUrl],
+      html5: true,
       loop: true,
       volume: initialVolume,
+      onload: () => setAudioError(null),
+      onloaderror: (_id, error) => {
+        console.error("Background audio failed to load", error);
+        setAudioError(getAudioErrorMessage(resolvedAudioUrl));
+      },
+      onplayerror: (_id, error) => {
+        console.error("Background audio play was blocked", error);
+        setAudioError("Playback was blocked by the browser. Click play again after interacting with the page.");
+      },
     });
 
-    // Load SFXs
     sfxRefs.current = {
       click: new Howl({ src: [musicConfig.clickSfx], volume: 0.5 }),
       giftOpen: new Howl({ src: [musicConfig.giftOpenSfx], volume: 0.6 }),
@@ -52,13 +112,13 @@ export function useAudio(musicConfig: MusicConfig = configData.music) {
       }
       Object.values(sfxRefs.current).forEach((sfx) => sfx.unload());
     };
-  }, [musicConfig]);
+  }, [musicConfig.bgMusicUrl, musicConfig.bgMusicVolume, musicConfig.clickSfx, musicConfig.giftOpenSfx, musicConfig.confettiSfx, musicConfig.fireworksSfx]);
 
   const playBgMusic = () => {
     if (!bgMusicRef.current) return;
     if (!bgMusicRef.current.playing()) {
       bgMusicRef.current.play();
-      bgMusicRef.current.fade(0, volume, 2000); // Smooth fade in
+      bgMusicRef.current.fade(0, volume, 2000);
       setIsPlayingBg(true);
     }
   };
@@ -116,6 +176,7 @@ export function useAudio(musicConfig: MusicConfig = configData.music) {
   return {
     isPlayingBg,
     isMuted,
+    audioError,
     playBgMusic,
     pauseBgMusic,
     stopBgMusic,

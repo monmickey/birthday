@@ -7,6 +7,7 @@ interface MusicPlayerProps {
   isPlaying: boolean;
   isMuted: boolean;
   volume: number;
+  audioError?: string | null;
   onTogglePlay: () => void;
   onToggleMute: () => void;
   onVolumeChange: (volume: number) => void;
@@ -16,6 +17,7 @@ export default function MusicPlayer({
   isPlaying,
   isMuted,
   volume,
+  audioError,
   onTogglePlay,
   onToggleMute,
   onVolumeChange,
@@ -24,6 +26,12 @@ export default function MusicPlayer({
 
   return (
     <div className="fixed bottom-6 right-6 z-50 glass-panel rounded-2xl sm:rounded-full px-4 sm:px-5 py-3 flex items-center gap-3 sm:gap-4 transition-all duration-300 hover:border-primary/40 shadow-lg select-none">
+      {audioError && (
+        <span className="hidden sm:block max-w-[160px] text-[10px] leading-tight text-amber-200/90">
+          {audioError}
+        </span>
+      )}
+
       {/* Sound Visualizer Waves */}
       {isPlaying && !isMuted && (
         <div className="flex items-end gap-[3.5px] h-4 w-6 px-1">

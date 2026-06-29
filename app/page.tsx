@@ -40,6 +40,7 @@ function HomeContent() {
   const {
     isPlayingBg,
     isMuted,
+    audioError,
     volume,
     playBgMusic,
     pauseBgMusic,
@@ -176,6 +177,7 @@ function HomeContent() {
               isPlaying={isPlayingBg}
               isMuted={isMuted}
               volume={volume}
+              audioError={audioError}
               onTogglePlay={isPlayingBg ? pauseBgMusic : playBgMusic}
               onToggleMute={toggleMute}
               onVolumeChange={setVolume}

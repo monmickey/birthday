@@ -70,6 +70,34 @@ export default function AdminDashboard() {
     reader.readAsDataURL(file);
   };
 
+  // Helper to convert & save local audio files to base64
+  const handleAudioUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    targetKey: "bgMusicUrl" | "clickSfx" | "giftOpenSfx" | "confettiSfx" | "fireworksSfx"
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert("Audio file is quite large (over 8MB). Uploading may take longer and hit storage limits.");
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      if (config) {
+        setConfig({
+          ...config,
+          music: {
+            ...config.music,
+            [targetKey]: base64String,
+          },
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Photo management
   const addPhoto = () => {
     if (!config || !newPhoto.url) return;
@@ -655,23 +683,50 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="text-xs uppercase font-bold tracking-widest text-white/50 block mb-2">
-                    Background Music Audio URL
-                  </label>
-                  <input
-                    type="url"
-                    value={config.music.bgMusicUrl}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        music: { ...config.music, bgMusicUrl: e.target.value },
-                      })
-                    }
-                    className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-mono"
-                    placeholder="https://example.com/song.mp3"
-                  />
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs uppercase font-bold tracking-widest text-white/50 block">
+                      Background Music Audio URL / File
+                    </label>
+                    <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold uppercase">
+                      Supports URL or Local File
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={config.music.bgMusicUrl?.startsWith("data:") ? "[Uploaded Local Audio File]" : config.music.bgMusicUrl || ""}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          music: { ...config.music, bgMusicUrl: e.target.value },
+                        })
+                      }
+                      className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-mono"
+                      placeholder="https://example.com/song.mp3 or upload below"
+                    />
+                    <div className="flex items-center gap-3">
+                      <label className="flex-1 py-3 px-4 rounded-xl border border-dashed border-white/10 hover:border-primary/50 bg-white/5 text-center text-xs font-bold text-white/60 hover:text-white cursor-pointer transition-all flex items-center justify-center gap-2">
+                        <span>📤 Upload Local Audio File</span>
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          onChange={(e) => handleAudioUpload(e, "bgMusicUrl")}
+                          className="hidden"
+                        />
+                      </label>
+                      {config.music.bgMusicUrl?.startsWith("data:") && (
+                        <button
+                          type="button"
+                          onClick={() => setConfig({ ...config, music: { ...config.music, bgMusicUrl: "" } })}
+                          className="py-3 px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/25 font-bold text-xs uppercase cursor-pointer transition-all"
+                        >
+                          Clear File
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <p className="text-[10px] text-white/40 mt-2">
-                    Use a direct audio file URL such as MP3, WAV, or OGG. YouTube watch links will not play as background audio.
+                    Use a direct audio file URL such as MP3, WAV, or OGG, or upload a local file. YouTube watch links will not play.
                   </p>
                 </div>
 
@@ -705,28 +760,58 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   {[
-                    { label: "Click SFX URL", key: "clickSfx" },
-                    { label: "Gift Open SFX URL", key: "giftOpenSfx" },
-                    { label: "Confetti SFX URL", key: "confettiSfx" },
-                    { label: "Fireworks SFX URL", key: "fireworksSfx" },
-                  ].map((item) => (
-                    <div key={item.key}>
-                      <label className="text-[10px] uppercase font-bold tracking-widest text-white/45 block mb-2">
-                        {item.label}
-                      </label>
-                      <input
-                        type="url"
-                        value={config.music[item.key as keyof typeof config.music] as string}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            music: { ...config.music, [item.key]: e.target.value },
-                          })
-                        }
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-xs font-mono"
-                      />
-                    </div>
-                  ))}
+                    { label: "Click SFX", key: "clickSfx" },
+                    { label: "Gift Open SFX", key: "giftOpenSfx" },
+                    { label: "Confetti SFX", key: "confettiSfx" },
+                    { label: "Fireworks SFX", key: "fireworksSfx" },
+                  ].map((item) => {
+                    const value = config.music[item.key as keyof typeof config.music] as string;
+                    const isBase64 = value?.startsWith("data:");
+                    return (
+                      <div key={item.key} className="space-y-2">
+                        <label className="text-[10px] uppercase font-bold tracking-widest text-white/45 block mb-1">
+                          {item.label}
+                        </label>
+                        <input
+                          type="text"
+                          value={isBase64 ? "[Uploaded Local SFX File]" : value || ""}
+                          onChange={(e) =>
+                            setConfig({
+                              ...config,
+                              music: { ...config.music, [item.key]: e.target.value },
+                            })
+                          }
+                          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-xs font-mono"
+                          placeholder="Paste URL or upload below"
+                        />
+                        <div className="flex gap-2">
+                          <label className="flex-1 py-2 px-3 rounded-lg border border-dashed border-white/10 hover:border-primary/50 bg-white/5 text-center text-[10px] font-bold text-white/50 hover:text-white cursor-pointer transition-all flex items-center justify-center gap-1.5">
+                            <span>📤 Upload File</span>
+                            <input
+                              type="file"
+                              accept="audio/*"
+                              onChange={(e) => handleAudioUpload(e, item.key as any)}
+                              className="hidden"
+                            />
+                          </label>
+                          {isBase64 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setConfig({
+                                  ...config,
+                                  music: { ...config.music, [item.key]: "" },
+                                })
+                              }
+                              className="px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/25 font-bold text-[10px] uppercase cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
