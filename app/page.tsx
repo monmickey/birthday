@@ -13,6 +13,7 @@ import ThemeToggle from "@/components/theme-toggle";
 
 // Setup Stages
 import PasscodeScreen from "@/components/passcode-screen";
+import CountdownScreen from "@/components/countdown-screen";
 import CameraGallery from "@/components/camera-gallery";
 import CakeSlice from "@/components/cake-slice";
 import BirthdayLetter from "@/components/birthday-letter";
@@ -38,6 +39,7 @@ function HomeContent() {
   } = useAudio();
 
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showCountdown, setShowCountdown] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [friendName, setFriendName] = useState(configData.recipientName);
   const [secretCode, setSecretCode] = useState(configData.secretCode || "2026");
@@ -71,8 +73,14 @@ function HomeContent() {
   }, []);
 
   const handleUnlockSuccess = () => {
-    setIsUnlocked(true);
-    playBgMusic(); // Starts background music on unlock
+    // If birthday is in the future, show countdown; otherwise go straight in
+    const isFuture = new Date(targetDate).getTime() > Date.now();
+    if (isFuture) {
+      setShowCountdown(true);
+    } else {
+      setIsUnlocked(true);
+    }
+    playBgMusic();
   };
 
   const handleReplay = () => {
@@ -121,7 +129,7 @@ function HomeContent() {
       <ThemeToggle isDark={isDark} onToggle={() => setIsDark(!isDark)} playSfx={playSfx} />
 
       <AnimatePresence mode="wait">
-        {!isUnlocked ? (
+        {!isUnlocked && !showCountdown ? (
           <motion.div
             key="lock"
             initial={{ opacity: 0 }}
@@ -134,6 +142,20 @@ function HomeContent() {
               correctCode={secretCode}
               onSuccess={handleUnlockSuccess}
               playSfx={playSfx}
+            />
+          </motion.div>
+        ) : showCountdown ? (
+          <motion.div
+            key="countdown"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full min-h-screen"
+          >
+            <CountdownScreen
+              targetDate={targetDate}
+              onComplete={() => { setShowCountdown(false); setIsUnlocked(true); }}
+              playClick={() => playSfx("click")}
             />
           </motion.div>
         ) : (
