@@ -23,6 +23,7 @@ import MusicPlayer from "@/components/music-player";
 // Hooks
 import { useAudio } from "@/hooks/useAudio";
 import configData from "@/config/birthday-config.json";
+import { getBirthdayPage } from "@/lib/supabase";
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -59,6 +60,15 @@ function HomeContent() {
     const dateParam = searchParams.get("date");
     if (dateParam) setTargetDate(dateParam);
   }, [searchParams]);
+
+  // Load saved config from localStorage (admin edits)
+  useEffect(() => {
+    getBirthdayPage("default").then((cfg) => {
+      setFriendName(cfg.recipientName);
+      if (cfg.secretCode) setSecretCode(cfg.secretCode);
+      if (cfg.birthdayDate) setTargetDate(cfg.birthdayDate);
+    });
+  }, []);
 
   const handleUnlockSuccess = () => {
     setIsUnlocked(true);
