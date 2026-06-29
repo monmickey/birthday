@@ -112,6 +112,7 @@ VALUES (
   }',
   '{
     "bgMusicUrl": "",
+    "bgMusicVolume": 0.4,
     "giftOpenSfx": "",
     "clickSfx": "",
     "confettiSfx": "",

@@ -39,6 +39,19 @@ function buildDefault(): BirthdayConfig {
   } as BirthdayConfig;
 }
 
+function normalizeMusic(music: Partial<BirthdayConfig["music"]> | null | undefined): BirthdayConfig["music"] {
+  const defaults = (defaultData as BirthdayConfig).music;
+
+  return {
+    ...defaults,
+    ...(music || {}),
+    bgMusicVolume:
+      typeof music?.bgMusicVolume === "number"
+        ? Math.min(1, Math.max(0, music.bgMusicVolume))
+        : defaults.bgMusicVolume ?? 0.4,
+  };
+}
+
 // ============================================================
 // Test connection — returns true if tables are accessible
 // ============================================================
@@ -118,7 +131,7 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
       secretCode: page.secret_code || "0541",
       birthdayDate: page.birthday_date,
       theme: page.theme,
-      music: page.music,
+      music: normalizeMusic(page.music),
       photos: (photos || []).map((p: any) => ({
         id: p.id,
         url: p.url,

@@ -18,6 +18,7 @@
   },
   "music": {
     "bgMusicUrl": "https://assets.mixkit.co/music/preview/mixkit-happy-birthday-lullaby-679.mp3",
+    "bgMusicVolume": 0.4,
     "giftOpenSfx": "https://assets.mixkit.co/sfx/preview/mixkit-magic-sparkle-190.mp3",
     "clickSfx": "https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3",
     "confettiSfx": "https://assets.mixkit.co/sfx/preview/mixkit-party-horn-sound-effect-and-people-cheering-852.mp3",

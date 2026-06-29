@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { FaHome, FaImage, FaHeart, FaMusic, FaCheck, FaTrash, FaLink, FaCalendarAlt, FaSlidersH, FaUser, FaKey, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaHome, FaImage, FaHeart, FaMusic, FaCheck, FaTrash, FaLink, FaCalendarAlt, FaSlidersH, FaUser, FaKey, FaEye, FaEyeSlash, FaVolumeUp } from "react-icons/fa";
 import { getBirthdayPage, saveBirthdayPage } from "@/lib/supabase";
 import { formatDateTimeLocalValue } from "@/lib/date";
 import { BirthdayConfig, PhotoItem, WishItem, TimelineItem } from "@/config/types";
@@ -643,21 +643,91 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div>
-                <label className="text-xs uppercase font-bold tracking-widest text-white/50 block mb-2">
-                  Background Music Audio URL
-                </label>
-                <input
-                  type="text"
-                  value={config.music.bgMusicUrl}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      music: { ...config.music, bgMusicUrl: e.target.value },
-                    })
-                  }
-                  className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-mono"
-                />
+              <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-secondary/15 border border-secondary/20 text-secondary flex items-center justify-center">
+                    <FaMusic size={14} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Music Setup</h3>
+                    <p className="text-xs text-white/50 mt-1">Choose the background track and the starting volume for visitors.</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs uppercase font-bold tracking-widest text-white/50 block mb-2">
+                    Background Music Audio URL
+                  </label>
+                  <input
+                    type="url"
+                    value={config.music.bgMusicUrl}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        music: { ...config.music, bgMusicUrl: e.target.value },
+                      })
+                    }
+                    className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-mono"
+                    placeholder="https://example.com/song.mp3"
+                  />
+                  <p className="text-[10px] text-white/40 mt-2">
+                    Use a direct audio file URL such as MP3, WAV, or OGG. YouTube watch links will not play as background audio.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <label className="text-xs uppercase font-bold tracking-widest text-white/50">
+                      Default Music Volume
+                    </label>
+                    <span className="text-xs text-white/70 font-mono flex items-center gap-2">
+                      <FaVolumeUp size={12} />
+                      {Math.round((config.music.bgMusicVolume ?? 0.4) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round((config.music.bgMusicVolume ?? 0.4) * 100)}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        music: {
+                          ...config.music,
+                          bgMusicVolume: Number(e.target.value) / 100,
+                        },
+                      })
+                    }
+                    className="w-full accent-primary cursor-pointer"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {[
+                    { label: "Click SFX URL", key: "clickSfx" },
+                    { label: "Gift Open SFX URL", key: "giftOpenSfx" },
+                    { label: "Confetti SFX URL", key: "confettiSfx" },
+                    { label: "Fireworks SFX URL", key: "fireworksSfx" },
+                  ].map((item) => (
+                    <div key={item.key}>
+                      <label className="text-[10px] uppercase font-bold tracking-widest text-white/45 block mb-2">
+                        {item.label}
+                      </label>
+                      <input
+                        type="url"
+                        value={config.music[item.key as keyof typeof config.music] as string}
+                        onChange={(e) =>
+                          setConfig({
+                            ...config,
+                            music: { ...config.music, [item.key]: e.target.value },
+                          })
+                        }
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-xs font-mono"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

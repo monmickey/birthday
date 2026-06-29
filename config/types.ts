@@ -47,6 +47,7 @@ export interface BirthdayConfig {
   theme: ThemeConfig;
   music: {
     bgMusicUrl: string;
+    bgMusicVolume?: number;
     giftOpenSfx: string;
     clickSfx: string;
     confettiSfx: string;

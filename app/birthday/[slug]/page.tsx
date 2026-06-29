@@ -31,22 +31,23 @@ function BirthdayPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const slug = (params.slug as string) || "default";
-
-  const {
-    isPlayingBg,
-    isMuted,
-    playBgMusic,
-    pauseBgMusic,
-    stopBgMusic,
-    playSfx,
-    toggleMute,
-  } = useAudio();
-
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showCountdown, setShowCountdown] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<BirthdayConfig | null>(null);
+
+  const {
+    isPlayingBg,
+    isMuted,
+    volume,
+    playBgMusic,
+    pauseBgMusic,
+    stopBgMusic,
+    playSfx,
+    toggleMute,
+    setVolume,
+  } = useAudio(config?.music);
 
   useEffect(() => {
     if (isDark) {
@@ -187,8 +188,10 @@ function BirthdayPageContent() {
             <MusicPlayer
               isPlaying={isPlayingBg}
               isMuted={isMuted}
+              volume={volume}
               onTogglePlay={isPlayingBg ? pauseBgMusic : playBgMusic}
               onToggleMute={toggleMute}
+              onVolumeChange={setVolume}
             />
 
             <section className="min-h-screen w-full flex flex-col items-center justify-center text-center px-4 relative">

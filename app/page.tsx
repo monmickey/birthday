@@ -26,25 +26,28 @@ import { useAudio } from "@/hooks/useAudio";
 import configData from "@/config/birthday-config.json";
 import { getBirthdayPage } from "@/lib/supabase";
 import { parseBirthdayDate } from "@/lib/date";
+import { BirthdayConfig } from "@/config/types";
 
 function HomeContent() {
   const searchParams = useSearchParams();
-  const {
-    isPlayingBg,
-    isMuted,
-    playBgMusic,
-    pauseBgMusic,
-    stopBgMusic,
-    playSfx,
-    toggleMute,
-  } = useAudio();
-
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showCountdown, setShowCountdown] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [friendName, setFriendName] = useState(configData.recipientName);
   const [secretCode, setSecretCode] = useState(configData.secretCode || "0541");
   const [targetDate, setTargetDate] = useState(configData.birthdayDate);
+  const [musicConfig, setMusicConfig] = useState<BirthdayConfig["music"]>(configData.music);
+  const {
+    isPlayingBg,
+    isMuted,
+    volume,
+    playBgMusic,
+    pauseBgMusic,
+    stopBgMusic,
+    playSfx,
+    toggleMute,
+    setVolume,
+  } = useAudio(musicConfig);
 
   useEffect(() => {
     if (isDark) {
@@ -70,6 +73,7 @@ function HomeContent() {
       setFriendName(cfg.recipientName);
       if (cfg.secretCode) setSecretCode(cfg.secretCode);
       if (cfg.birthdayDate) setTargetDate(cfg.birthdayDate);
+      setMusicConfig(cfg.music);
     });
   }, []);
 
@@ -171,8 +175,10 @@ function HomeContent() {
             <MusicPlayer
               isPlaying={isPlayingBg}
               isMuted={isMuted}
+              volume={volume}
               onTogglePlay={isPlayingBg ? pauseBgMusic : playBgMusic}
               onToggleMute={toggleMute}
+              onVolumeChange={setVolume}
             />
 
             <section className="min-h-screen w-full flex flex-col items-center justify-center text-center px-4 relative">
