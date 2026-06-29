@@ -7,9 +7,50 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
-export const supabaseClient = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+// Custom fetch wrapper with a timeout to prevent hanging connections (e.g., when Supabase is paused or offline)
+const FETCH_TIMEOUT_MS = 4000; // 4 seconds
+
+const fetchWithTimeout = (url: URL | RequestInfo, options?: RequestInit): Promise<Response> => {
+  const controller = new AbortController();
+  const id = setTimeout(() => {
+    console.warn(`[fetchWithTimeout] Request to ${url} timed out! Aborting...`);
+    controller.abort();
+  }, FETCH_TIMEOUT_MS);
+
+  console.log(`[fetchWithTimeout] Dispatching fetch to: ${url}`);
+  return fetch(url, {
+    ...options,
+    signal: controller.signal,
+  }).then((res) => {
+    console.log(`[fetchWithTimeout] Response received from ${url}: Status ${res.status}`);
+    return res;
+  }).catch((err) => {
+    console.error(`[fetchWithTimeout] Fetch to ${url} failed:`, err);
+    throw err;
+  }).finally(() => clearTimeout(id));
+};
+
+// Cache the Supabase client globally in development to prevent "Multiple GoTrueClient" warnings during HMR
+const globalForSupabase = globalThis as unknown as {
+  supabaseClient: any;
+};
+
+export const supabaseClient = globalForSupabase.supabaseClient || (
+  isSupabaseConfigured
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          fetch: fetchWithTimeout,
+        },
+        auth: {
+          persistSession: false, // Prevents local storage collisions and multiple GoTrueClient warnings since auth is not used
+        },
+      })
+    : null
+);
+
+if (process.env.NODE_ENV !== "production") {
+  globalForSupabase.supabaseClient = supabaseClient;
+}
 
 // LocalStorage Helper Keys
 const LOCAL_STORAGE_KEY_PREFIX = "birthday_surprise_page_";
@@ -119,12 +160,15 @@ export async function testSupabaseConnection(): Promise<{
 // getBirthdayPage
 // ============================================================
 export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
+  console.log(`[getBirthdayPage] Called for slug: "${slug}"`);
   // --- No Supabase configured: use localStorage ---
   if (!isSupabaseConfigured || !supabaseClient) {
+    console.log(`[getBirthdayPage] Supabase not configured. Using fallback config.`);
     return readFromLocalStorage(slug) ?? buildDefault();
   }
 
   try {
+    console.log(`[getBirthdayPage] Fetching main page row from Supabase...`);
     // 1. Fetch main page details
     const { data: page, error: pageError } = await supabaseClient
       .from("birthday_pages")
@@ -133,11 +177,11 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
       .single();
 
     if (pageError || !page) {
-      // Table may not exist yet — fall back gracefully
-      console.warn(`Supabase: slug "${slug}" not found. Falling back to localStorage/default.`);
+      console.warn(`[getBirthdayPage] Page row not found or error. pageError:`, pageError);
       return readFromLocalStorage(slug) ?? buildDefault();
     }
 
+    console.log(`[getBirthdayPage] Main page row fetched successfully. ID: ${page.id}. Fetching child tables...`);
     // 2, 3, 4. Fetch linked child tables in parallel using Promise.all to optimize load times
     const [photosResult, messagesResult, timelineResult] = await Promise.all([
       supabaseClient.from("photos").select("*").eq("page_id", page.id).order("created_at", { ascending: true }),
@@ -148,6 +192,7 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
     const photos = photosResult.data || [];
     const messages = messagesResult.data || [];
     const timeline = timelineResult.data || [];
+    console.log(`[getBirthdayPage] Child tables fetched. Photos: ${photos.length}, Wishes: ${messages.length}, Timeline: ${timeline.length}`);
 
     return {
       recipientName: page.recipient_name,
@@ -180,7 +225,7 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
       },
     };
   } catch (error: any) {
-    console.error("Supabase load failed. Falling back to localStorage.", error?.message || error);
+    console.error("[getBirthdayPage] Exception caught:", error?.message || error);
     // Always fall back to localStorage, never crash
     return readFromLocalStorage(slug) ?? buildDefault();
   }

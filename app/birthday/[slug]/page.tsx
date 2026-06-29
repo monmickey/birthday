@@ -100,7 +100,12 @@ function BirthdayPageContent() {
     const codeParam = searchParams.get("code");
     const dateParam = searchParams.get("date");
 
-    if (nameParam || codeParam || dateParam) {
+    const needsUpdate =
+      (nameParam && nameParam !== config.recipientName) ||
+      (codeParam && codeParam !== config.secretCode) ||
+      (dateParam && dateParam !== config.birthdayDate);
+
+    if (needsUpdate) {
       setConfig((prev) => {
         if (!prev) return null;
         return {
@@ -111,7 +116,7 @@ function BirthdayPageContent() {
         };
       });
     }
-  }, [searchParams, config === null]);
+  }, [searchParams, config]);
 
   const handleUnlockSuccess = () => {
     // If birthday is in the future, show countdown; otherwise go straight in

@@ -19,8 +19,15 @@ export default function CountdownScreen({ targetDate, onComplete, playClick }: C
   } | null>(null);
   const [isDone, setIsDone] = useState(false);
 
+  const onCompleteRef = React.useRef(onComplete);
+  React.useEffect(() => {
+    onCompleteRef.current = onComplete;
+  });
+
   useEffect(() => {
     const target = parseBirthdayDate(targetDate).getTime();
+    let interval: NodeJS.Timeout;
+    let timer: NodeJS.Timeout;
 
     const calculateTime = () => {
       const now = Date.now();
@@ -29,12 +36,13 @@ export default function CountdownScreen({ targetDate, onComplete, playClick }: C
       if (difference <= 0) {
         setIsDone(true);
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        if (interval) clearInterval(interval);
         
         // Wait 1.5 seconds displaying "Almost there..." then proceed
-        const timer = setTimeout(() => {
-          onComplete();
+        timer = setTimeout(() => {
+          onCompleteRef.current();
         }, 1500);
-        return () => clearTimeout(timer);
+        return;
       }
 
       const days = Math.floor(difference / (1000 * 60 * 60 * 24));
@@ -46,10 +54,17 @@ export default function CountdownScreen({ targetDate, onComplete, playClick }: C
     };
 
     calculateTime();
-    const interval = setInterval(calculateTime, 1000);
+    
+    const diff = target - Date.now();
+    if (diff > 0) {
+      interval = setInterval(calculateTime, 1000);
+    }
 
-    return () => clearInterval(interval);
-  }, [targetDate, onComplete]);
+    return () => {
+      if (interval) clearInterval(interval);
+      if (timer) clearTimeout(timer);
+    };
+  }, [targetDate]);
 
   const handleSkip = () => {
     playClick();

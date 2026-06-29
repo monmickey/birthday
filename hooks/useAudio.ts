@@ -106,7 +106,7 @@ export function useAudio(musicConfig: MusicConfig = configData.music) {
 
     bgMusicRef.current = new Howl({
       src: [resolvedAudioUrl],
-      html5: true, // Always use HTML5 audio for background music to handle larger files & base64 cleanly
+      html5: !isBase64, // Use Web Audio for base64 data URLs to prevent HTML5 pool exhaustion, but keep HTML5 streaming for standard URLs
       format: formats,
       loop: true,
       volume: initialVolume,
