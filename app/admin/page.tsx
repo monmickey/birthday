@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { FaHome, FaImage, FaHeart, FaMusic, FaCheck, FaTimes, FaPlus, FaTrash, FaLink, FaCalendarAlt, FaSlidersH, FaUser } from "react-icons/fa";
-import { getBirthdayPage, saveBirthdayPage, testSupabaseConnection, isSupabaseConfigured } from "@/lib/supabase";
+import { getBirthdayPage, saveBirthdayPage } from "@/lib/supabase";
 import { BirthdayConfig, PhotoItem, WishItem, TimelineItem } from "@/config/types";
 import defaultData from "@/config/birthday-config.json";
 
@@ -15,12 +15,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [dbStatus, setDbStatus] = useState<{ ok: boolean; message: string } | null>(null);
-
-  // Test Supabase connection on mount
-  useEffect(() => {
-    testSupabaseConnection().then(setDbStatus);
-  }, []);
 
   // For adding new items
   const [newPhoto, setNewPhoto] = useState<Partial<PhotoItem>>({ title: "", description: "", date: "" });
@@ -51,7 +45,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Helper to convert & resize image files to compressed base64
+  // Helper to convert files to base64
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     type: "photo" | "timeline"
@@ -61,33 +55,12 @@ export default function AdminDashboard() {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const img = new window.Image();
-      img.onload = () => {
-        const MAX = 800;
-        let { width, height } = img;
-        if (width > MAX || height > MAX) {
-          if (width > height) {
-            height = Math.round((height * MAX) / width);
-            width = MAX;
-          } else {
-            width = Math.round((width * MAX) / height);
-            height = MAX;
-          }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        ctx.drawImage(img, 0, 0, width, height);
-        const compressed = canvas.toDataURL("image/jpeg", 0.82);
-        if (type === "photo") {
-          setNewPhoto((prev) => ({ ...prev, url: compressed }));
-        } else {
-          setNewTimeline((prev) => ({ ...prev, image: compressed }));
-        }
-      };
-      img.src = reader.result as string;
+      const base64String = reader.result as string;
+      if (type === "photo") {
+        setNewPhoto((prev) => ({ ...prev, url: base64String }));
+      } else {
+        setNewTimeline((prev) => ({ ...prev, image: base64String }));
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -173,27 +146,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-dark-bg text-gray-100 flex flex-col md:flex-row font-sans">
-      {/* DB Connection Banner */}
-      {dbStatus && (
-        <div className={`w-full px-5 py-2.5 text-xs font-bold flex items-center gap-3 ${
-          dbStatus.ok
-            ? "bg-emerald-500/15 border-b border-emerald-500/30 text-emerald-400"
-            : "bg-red-500/15 border-b border-red-500/30 text-red-400"
-        }`}>
-          <span>{dbStatus.ok ? "✅" : "❌"}</span>
-          <span>{dbStatus.message}</span>
-          {!dbStatus.ok && (
-            <a
-              href="https://supabase.com/dashboard/project/baokxpivmuoeknolnkal/sql/new"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto underline hover:text-white transition-colors shrink-0"
-            >
-              Open SQL Editor →
-            </a>
-          )}
-        </div>
-      )}
       {/* Sidebar navigation */}
       <aside className="w-full md:w-64 bg-[#0a0522] border-b md:border-b-0 md:border-r border-white/5 p-6 flex flex-col justify-between">
         <div>
@@ -233,11 +185,10 @@ export default function AdminDashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`w-full py-3 px-4 rounded-xl flex items-center gap-3 text-xs font-bold tracking-wider uppercase transition-all text-left ${
-                  activeTab === tab.id
+                className={`w-full py-3 px-4 rounded-xl flex items-center gap-3 text-xs font-bold tracking-wider uppercase transition-all text-left ${activeTab === tab.id
                     ? "bg-primary text-white shadow-lg shadow-primary/20"
                     : "text-white/55 hover:text-white hover:bg-white/5"
-                }`}
+                  }`}
               >
                 {tab.icon} {tab.label}
               </button>
@@ -277,7 +228,7 @@ export default function AdminDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 p-6 md:p-12 overflow-y-auto max-h-screen">
-        <div className="max-w-3xl mx-auto">
+        <div className="w-full max-w-7xl mx-auto">
           {/* Header Info */}
           <div className="mb-10 flex flex-col md:flex-row md:items-baseline justify-between gap-2 pb-6 border-b border-white/5">
             <h1 className="text-2xl md:text-3xl font-black text-white capitalize">
@@ -305,39 +256,14 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="text-xs uppercase font-bold tracking-widest text-white/50 block mb-2">
-                  Birthday Date
+                  Birthday Date (ISO String)
                 </label>
                 <input
                   type="datetime-local"
-                  value={config.birthdayDate ? config.birthdayDate.substring(0, 16) : ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val) return;
-                    // Append seconds so it's a valid ISO-like string preserving local time
-                    setConfig({ ...config, birthdayDate: val + ":00" });
-                  }}
-                  className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-semibold [color-scheme:dark]"
+                  value={config.birthdayDate.substring(0, 16)}
+                  onChange={(e) => setConfig({ ...config, birthdayDate: new Date(e.target.value).toISOString() })}
+                  className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-semibold"
                 />
-                <p className="text-[10px] text-white/40 mt-1.5 font-bold">
-                  Set the birthday date and time. The countdown will display until this moment.
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs uppercase font-bold tracking-widest text-white/50 block mb-2">
-                  Keypad Unlock Passcode
-                </label>
-                <input
-                  type="text"
-                  maxLength={4}
-                  value={config.secretCode || ""}
-                  onChange={(e) => setConfig({ ...config, secretCode: e.target.value.replace(/[^0-9]/g, "") })}
-                  placeholder="e.g. 2026"
-                  className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-mono font-semibold"
-                />
-                <p className="text-[10px] text-white/40 mt-1.5 font-bold">
-                  Enter a 4-digit numeric code that the recipient must enter to open the surprise.
-                </p>
               </div>
             </div>
           )}
@@ -347,7 +273,7 @@ export default function AdminDashboard() {
               {/* Add photo card */}
               <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-white">Add Polaroid Photo</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
                     type="text"
@@ -379,7 +305,7 @@ export default function AdminDashboard() {
                     onChange={(e) => handleFileUpload(e, "photo")}
                     className="w-full text-xs text-white/55 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:opacity-90 file:cursor-pointer"
                   />
-                  
+
                   {newPhoto.url && (
                     <div className="w-14 h-14 rounded-lg overflow-hidden border border-white/10">
                       <img src={newPhoto.url} className="w-full h-full object-cover" />
@@ -428,7 +354,7 @@ export default function AdminDashboard() {
               {/* Add milestone */}
               <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-white">Add Journey Milestone</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
                     type="text"
@@ -460,7 +386,7 @@ export default function AdminDashboard() {
                     onChange={(e) => handleFileUpload(e, "timeline")}
                     className="w-full text-xs text-white/55 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:opacity-90 file:cursor-pointer"
                   />
-                  
+
                   {newTimeline.image && (
                     <div className="w-14 h-14 rounded-lg overflow-hidden border border-white/10">
                       <img src={newTimeline.image} className="w-full h-full object-cover" />
@@ -511,7 +437,7 @@ export default function AdminDashboard() {
               {/* Add wish */}
               <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-white">Add Birthday Wish Card</h3>
-                
+
                 <input
                   type="text"
                   placeholder="Sender Name (e.g. Alex)"
@@ -700,7 +626,7 @@ export default function AdminDashboard() {
               <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-white">Surprise Page Features</h3>
                 <p className="text-xs text-white/50">Configure interactive effects running across sections.</p>
-                
+
                 <div className="space-y-3.5 pt-2">
                   {[
                     { label: "Enable Confetti Explosions", key: "confetti" },
