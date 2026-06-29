@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
-import configData from "@/config/birthday-config.json";
 import { WishItem } from "@/config/types";
 
 const GRADIENTS = [
@@ -13,12 +12,11 @@ const GRADIENTS = [
   "from-emerald-500/10 to-teal-500/10 border-emerald-500/30",
 ];
 
-export default function WishesWall() {
-  const [wishes, setWishes] = useState<WishItem[]>([]);
+interface WishesWallProps {
+  wishes?: WishItem[];
+}
 
-  useEffect(() => {
-    setWishes(configData.wishes);
-  }, []);
+export default function WishesWall({ wishes = [] }: WishesWallProps) {
 
   return (
     <section className="py-24 relative z-10 px-4 max-w-5xl mx-auto overflow-hidden">

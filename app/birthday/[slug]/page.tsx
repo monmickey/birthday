@@ -214,7 +214,7 @@ function BirthdayPageContent() {
 
             {/* Camera clicker polaroids section */}
             <div id="camera-gallery" className="w-full border-t border-slate-200/20">
-              <CameraGallery playSfx={playSfx} />
+              <CameraGallery photos={config.photos} playSfx={playSfx} />
             </div>
 
             {/* Cake Slicing section */}
@@ -235,7 +235,7 @@ function BirthdayPageContent() {
 
             {/* Wishes wall section */}
             <div id="wishes-wall" className="w-full border-t border-slate-200/20 bg-white/5">
-              <WishesWall />
+              <WishesWall wishes={config.wishes} />
             </div>
 
             {/* Finale celebration dynamic dashboard */}

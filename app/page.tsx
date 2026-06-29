@@ -193,7 +193,7 @@ function HomeContent() {
 
             {/* Camera memories slider clicker section */}
             <div id="camera-gallery" className="w-full border-t border-slate-200/20">
-              <CameraGallery playSfx={playSfx} />
+              <CameraGallery photos={configData.photos} playSfx={playSfx} />
             </div>
 
             {/* Cake Slicing Ritual Section */}

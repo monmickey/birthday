@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaTrash, FaTimes } from "react-icons/fa";
-import configData from "@/config/birthday-config.json";
+import { FaTimes } from "react-icons/fa";
 import { PhotoItem } from "@/config/types";
 
 interface CameraGalleryProps {
+  photos?: PhotoItem[];
   playSfx: (type: "click" | "giftOpen") => void;
 }
 
@@ -17,16 +17,16 @@ interface StackedPhoto extends PhotoItem {
   zIndex: number;
 }
 
-export default function CameraGallery({ playSfx }: CameraGalleryProps) {
+export default function CameraGallery({ photos = [], playSfx }: CameraGalleryProps) {
   const [allPhotos, setAllPhotos] = useState<PhotoItem[]>([]);
   const [photoQueue, setPhotoQueue] = useState<PhotoItem[]>([]);
   const [displayedStack, setDisplayedStack] = useState<StackedPhoto[]>([]);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    setAllPhotos(configData.photos);
-    setPhotoQueue(configData.photos);
-  }, []);
+    setAllPhotos(photos);
+    setPhotoQueue(photos);
+  }, [photos]);
 
   const handleCameraTap = () => {
     if (photoQueue.length === 0) {
