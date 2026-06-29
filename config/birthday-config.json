@@ -1,0 +1,101 @@
+{
+  "recipientName": "Sophia",
+  "secretCode": "2026",
+  "birthdayDate": "2026-07-01T00:00:00",
+  "theme": {
+    "primaryColor": "#a855f7",
+    "secondaryColor": "#ec4899",
+    "accentColor": "#3b82f6",
+    "backgroundGradient": ["#050215", "#12052c", "#20053a"],
+    "fonts": {
+      "primary": "Outfit",
+      "accent": "Playfair Display"
+    }
+  },
+  "music": {
+    "bgMusicUrl": "https://assets.mixkit.co/music/preview/mixkit-happy-birthday-lullaby-679.mp3",
+    "giftOpenSfx": "https://assets.mixkit.co/sfx/preview/mixkit-magic-sparkle-190.mp3",
+    "clickSfx": "https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3",
+    "confettiSfx": "https://assets.mixkit.co/sfx/preview/mixkit-party-horn-sound-effect-and-people-cheering-852.mp3",
+    "fireworksSfx": "https://assets.mixkit.co/sfx/preview/mixkit-fireworks-clearing-noise-3032.mp3"
+  },
+  "photos": [
+    { "id": 1, "url": "https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=600&auto=format&fit=crop", "title": "Summer Sunset", "description": "Dancing under the warm orange sunset sky.", "date": "June 2025" },
+    { "id": 2, "url": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=600&auto=format&fit=crop", "title": "Festival Night", "description": "Laughter, music, and the glow of sparklers.", "date": "August 2025" },
+    { "id": 3, "url": "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=600&auto=format&fit=crop", "title": "Surprise Party", "description": "The look of pure shock on your face!", "date": "September 2025" },
+    { "id": 4, "url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=600&auto=format&fit=crop", "title": "Beach Dayout", "description": "Splashing in the waves and collecting sea shells.", "date": "October 2025" },
+    { "id": 5, "url": "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?q=80&w=600&auto=format&fit=crop", "title": "Cozy Coffee", "description": "Warm lattes on a rainy Tuesday morning.", "date": "November 2025" },
+    { "id": 6, "url": "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?q=80&w=600&auto=format&fit=crop", "title": "Dance Session", "description": "Grooving like nobody was watching.", "date": "December 2025" },
+    { "id": 7, "url": "https://images.unsplash.com/photo-1502082553048-f009c37129b9?q=80&w=600&auto=format&fit=crop", "title": "Park Walk", "description": "Deep chats and golden autumn leaves.", "date": "October 2025" },
+    { "id": 8, "url": "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=600&auto=format&fit=crop", "title": "Spring Flowers", "description": "Surrounded by blooming cherry blossoms.", "date": "April 2025" },
+    { "id": 9, "url": "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=600&auto=format&fit=crop", "title": "Baloon Pop", "description": "Chasing giant balloons around the lawn.", "date": "May 2025" },
+    { "id": 10, "url": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=600&auto=format&fit=crop", "title": "Mountain Hike", "description": "Reaching the summit and breathing in the cold air.", "date": "July 2025" },
+    { "id": 11, "url": "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=600&auto=format&fit=crop", "title": "Birthday Dinner", "description": "Delicious desserts and endless stories.", "date": "July 2025" },
+    { "id": 12, "url": "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=600&auto=format&fit=crop", "title": "Arcade Night", "description": "Winning the giant plushie after ten tries.", "date": "January 2026" },
+    { "id": 13, "url": "https://images.unsplash.com/photo-1481169769994-f10d5db6e90f?q=80&w=600&auto=format&fit=crop", "title": "Snowball Fight", "description": "Freezing hands but warm hearts.", "date": "February 2026" },
+    { "id": 14, "url": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=600&auto=format&fit=crop", "title": "Concert Crowds", "description": "Singing along at the top of our lungs.", "date": "March 2026" },
+    { "id": 15, "url": "https://images.unsplash.com/photo-1516280440614-37939bbacd6a?q=80&w=600&auto=format&fit=crop", "title": "Retro Vinyls", "description": "Browsing old record shops for hours.", "date": "April 2026" },
+    { "id": 16, "url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600&auto=format&fit=crop", "title": "Lake Camping", "description": "Stargazing by the campfire.", "date": "May 2026" },
+    { "id": 17, "url": "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=600&auto=format&fit=crop", "title": "Neon Bowling", "description": "Getting three consecutive strikes!", "date": "May 2026" },
+    { "id": 18, "url": "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?q=80&w=600&auto=format&fit=crop", "title": "Baking Disaster", "description": "Flour everywhere, but the cookies tasted great.", "date": "June 2026" },
+    { "id": 19, "url": "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=600&auto=format&fit=crop", "title": "Book Cafe", "description": "Finding that hidden gem of a book.", "date": "June 2026" },
+    { "id": 20, "url": "https://images.unsplash.com/photo-1531058020387-3be344559be6?q=80&w=600&auto=format&fit=crop", "title": "Rooftop Party", "description": "Dancing with the city lights below.", "date": "June 2026" }
+  ],
+  "wishes": [
+    { "text": "Wishing you a year filled with infinite smiles and beautiful moments!", "sender": "Alex" },
+    { "text": "Happy Birthday to a genuinely wonderful soul. Shine bright!", "sender": "Emily" },
+    { "text": "May all your dreams take flight today. You deserve the world!", "sender": "Michael" },
+    { "text": "Cheers to another year of laughter, growth, and epic adventures!", "sender": "Jessica" },
+    { "text": "Thank you for bringing so much light into all of our lives.", "sender": "Sarah" },
+    { "text": "To my partner-in-crime: let's eat way too much cake today!", "sender": "David" },
+    { "text": "Wishing you health, peace, and abundance. Happy Birthday!", "sender": "Chris" },
+    { "text": "You are a spark of magic. Keep making the world a better place.", "sender": "Taylor" }
+  ],
+  "timeline": [
+    {
+      "date": "Jan 12, 2025",
+      "title": "Where It All Began",
+      "description": "Our very first photo together. We were so shy back then!",
+      "image": "https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=600&auto=format&fit=crop"
+    },
+    {
+      "date": "May 25, 2025",
+      "title": "The Road Trip Adventure",
+      "description": "Getting lost, singing to terrible radio songs, and finding that perfect local diner.",
+      "image": "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=600&auto=format&fit=crop"
+    },
+    {
+      "date": "Aug 30, 2025",
+      "title": "Concert Under the Stars",
+      "description": "Standing in the rain, losing our voices, but feeling happier than ever.",
+      "image": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=600&auto=format&fit=crop"
+    },
+    {
+      "date": "Nov 15, 2025",
+      "title": "The Surprise Dinner",
+      "description": "Getting the whole gang together to celebrate your promotion. Success looks good on you!",
+      "image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?q=80&w=600&auto=format&fit=crop"
+    },
+    {
+      "date": "Feb 14, 2026",
+      "title": "Cozy Winter Cabin",
+      "description": "Hot cocoa, board games, and watching the snow cover the pine trees.",
+      "image": "https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=600&auto=format&fit=crop"
+    }
+  ],
+  "personalLetter": {
+    "paragraphs": [
+      "Dearest Sophia,",
+      "Happy Birthday! Today, the world celebrates the day an incredibly special, kind, and inspiring person was born. I wanted to create something unique to remind you of how much you are cherished.",
+      "Looking back at all the memories we've shared over the past year—from getting lost on our wild road trips to those quiet nights laughing over silly inside jokes—I feel immensely grateful to have you in my life. You have a rare gift of bringing warmth, light, and laughter wherever you go.",
+      "As you step into this new chapter of your life, I wish you endless growth, exciting new opportunities, and the courage to pursue every single one of your dreams. Remember that you are stronger than you think and more loved than you can possibly imagine.",
+      "Have the most magical day today. Eat tons of cake, dance like nobody is watching, and make a beautiful wish. You deserve all the happiness this universe has to offer."
+    ],
+    "signature": "With all my love, Alex ❤️"
+  },
+  "cakeStyle": {
+    "layers": 3,
+    "frostingColor": "#ec4899",
+    "candleCount": 5
+  }
+}
