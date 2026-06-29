@@ -35,6 +35,7 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
     return {
       ...defaultData,
       recipientName: defaultData.recipientName,
+      secretCode: defaultData.secretCode || "2026",
     } as BirthdayConfig;
   }
 
@@ -75,6 +76,7 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
     // Combine database table structures into BirthdayConfig interface
     return {
       recipientName: page.recipient_name,
+      secretCode: page.secret_code || "2026",
       birthdayDate: page.birthday_date,
       theme: page.theme,
       music: page.music,
@@ -130,6 +132,7 @@ export async function saveBirthdayPage(slug: string, config: BirthdayConfig): Pr
     const pagePayload = {
       slug,
       recipient_name: config.recipientName,
+      secret_code: config.secretCode || "2026",
       birthday_date: config.birthdayDate,
       theme: config.theme,
       music: config.music,
