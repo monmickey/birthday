@@ -22,6 +22,7 @@ function normalizeAudioUrl(value?: string) {
 
   const trimmed = value.trim();
   if (!trimmed) return "";
+  if (trimmed.startsWith("data:")) return trimmed;
 
   try {
     const parsed = new URL(trimmed);
@@ -60,6 +61,23 @@ function getAudioErrorMessage(url: string) {
   return "The audio URL could not be loaded. Please use a direct MP3, WAV, or OGG file link.";
 }
 
+function getAudioFormat(url: string): string[] | undefined {
+  if (url.startsWith("data:")) {
+    const match = url.match(/^data:audio\/([^;]+);/);
+    if (match && match[1]) {
+      const ext = match[1].toLowerCase();
+      if (ext === "mpeg" || ext === "mp3") return ["mp3"];
+      if (ext === "wav" || ext === "wave" || ext === "x-wav") return ["wav"];
+      if (ext === "ogg") return ["ogg"];
+      if (ext === "aac") return ["aac"];
+      if (ext === "m4a" || ext === "x-m4a") return ["m4a"];
+      if (ext === "webm") return ["webm"];
+      return [ext];
+    }
+  }
+  return undefined;
+}
+
 export function useAudio(musicConfig: MusicConfig = configData.music) {
   const [isPlayingBg, setIsPlayingBg] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -83,9 +101,13 @@ export function useAudio(musicConfig: MusicConfig = configData.music) {
 
     setAudioError(null);
 
+    const isBase64 = resolvedAudioUrl.startsWith("data:");
+    const formats = getAudioFormat(resolvedAudioUrl);
+
     bgMusicRef.current = new Howl({
       src: [resolvedAudioUrl],
-      html5: true,
+      html5: !isBase64, // Disable HTML5 audio for base64 to avoid browser player limitations
+      format: formats,
       loop: true,
       volume: initialVolume,
       onload: () => setAudioError(null),
@@ -99,12 +121,27 @@ export function useAudio(musicConfig: MusicConfig = configData.music) {
       },
     });
 
-    sfxRefs.current = {
-      click: new Howl({ src: [musicConfig.clickSfx], volume: 0.5 }),
-      giftOpen: new Howl({ src: [musicConfig.giftOpenSfx], volume: 0.6 }),
-      confetti: new Howl({ src: [musicConfig.confettiSfx], volume: 0.5 }),
-      fireworks: new Howl({ src: [musicConfig.fireworksSfx], volume: 0.4 }),
-    };
+    // Handle sound effects (may be URL or base64)
+    const sfxList = [
+      { key: "click", url: musicConfig.clickSfx, volume: 0.5 },
+      { key: "giftOpen", url: musicConfig.giftOpenSfx, volume: 0.6 },
+      { key: "confetti", url: musicConfig.confettiSfx, volume: 0.5 },
+      { key: "fireworks", url: musicConfig.fireworksSfx, volume: 0.4 },
+    ];
+
+    const sfxs: { [key: string]: Howl } = {};
+    sfxList.forEach((sfx) => {
+      if (sfx.url) {
+        const isSfxBase64 = sfx.url.startsWith("data:");
+        sfxs[sfx.key] = new Howl({
+          src: [sfx.url],
+          volume: sfx.volume,
+          html5: !isSfxBase64,
+          format: isSfxBase64 ? getAudioFormat(sfx.url) : undefined,
+        });
+      }
+    });
+    sfxRefs.current = sfxs;
 
     return () => {
       if (bgMusicRef.current) {
