@@ -25,10 +25,43 @@ function readFromLocalStorage(slug: string): BirthdayConfig | null {
   }
 }
 
-/** Write to localStorage (client-side only) */
+/** Write to localStorage (client-side only) with QuotaExceeded fallback */
 function writeToLocalStorage(slug: string, config: BirthdayConfig): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`, JSON.stringify(config));
+  try {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`, JSON.stringify(config));
+  } catch (error) {
+    console.warn("localStorage quota exceeded. Attempting to save configuration without large local files.", error);
+    try {
+      // Create a deep copy and strip large base64 strings to save space
+      const strippedConfig = JSON.parse(JSON.stringify(config)) as BirthdayConfig;
+
+      if (strippedConfig.music.bgMusicUrl?.startsWith("data:")) {
+        strippedConfig.music.bgMusicUrl = "";
+      }
+      const sfxKeys: Array<keyof typeof strippedConfig.music> = ["clickSfx", "giftOpenSfx", "confettiSfx", "fireworksSfx"];
+      sfxKeys.forEach((key) => {
+        if (typeof strippedConfig.music[key] === "string" && strippedConfig.music[key].startsWith("data:")) {
+          (strippedConfig.music as any)[key] = "";
+        }
+      });
+
+      strippedConfig.photos = strippedConfig.photos.map((p) => ({
+        ...p,
+        url: p.url.startsWith("data:") ? "" : p.url,
+      }));
+
+      strippedConfig.timeline = strippedConfig.timeline.map((t) => ({
+        ...t,
+        image: t.image.startsWith("data:") ? "" : t.image,
+      }));
+
+      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`, JSON.stringify(strippedConfig));
+      console.log("Cached stripped text configuration successfully to localStorage.");
+    } catch (innerError) {
+      console.error("Failed to write stripped fallback to localStorage:", innerError);
+    }
+  }
 }
 
 /** Build the default config with correct secretCode */
