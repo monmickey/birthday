@@ -5,12 +5,16 @@ import { motion } from "framer-motion";
 import configData from "@/config/birthday-config.json";
 import { TimelineItem } from "@/config/types";
 
-export default function MemoryTimeline() {
+interface MemoryTimelineProps {
+  timeline?: TimelineItem[];
+}
+
+export default function MemoryTimeline({ timeline }: MemoryTimelineProps) {
   const [timelineEvents, setTimelineEvents] = useState<TimelineItem[]>([]);
 
   useEffect(() => {
-    setTimelineEvents(configData.timeline);
-  }, []);
+    setTimelineEvents(timeline || configData.timeline);
+  }, [timeline]);
 
   return (
     <section className="py-24 relative z-10 px-4 max-w-4xl mx-auto">

@@ -15,7 +15,7 @@ export const supabaseClient = isSupabaseConfigured
 const LOCAL_STORAGE_KEY_PREFIX = "birthday_surprise_page_";
 
 /** Read from localStorage (client-side only) */
-function readFromLocalStorage(slug: string): BirthdayConfig | null {
+export function readFromLocalStorage(slug: string): BirthdayConfig | null {
   if (typeof window === "undefined") return null;
   try {
     const stored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`);
@@ -138,26 +138,16 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
       return readFromLocalStorage(slug) ?? buildDefault();
     }
 
-    // 2. Fetch linked photos
-    const { data: photos } = await supabaseClient
-      .from("photos")
-      .select("*")
-      .eq("page_id", page.id)
-      .order("created_at", { ascending: true });
+    // 2, 3, 4. Fetch linked child tables in parallel using Promise.all to optimize load times
+    const [photosResult, messagesResult, timelineResult] = await Promise.all([
+      supabaseClient.from("photos").select("*").eq("page_id", page.id).order("created_at", { ascending: true }),
+      supabaseClient.from("messages").select("*").eq("page_id", page.id).order("created_at", { ascending: true }),
+      supabaseClient.from("timeline").select("*").eq("page_id", page.id).order("created_at", { ascending: true }),
+    ]);
 
-    // 3. Fetch linked wishes/messages
-    const { data: messages } = await supabaseClient
-      .from("messages")
-      .select("*")
-      .eq("page_id", page.id)
-      .order("created_at", { ascending: true });
-
-    // 4. Fetch linked timeline milestones
-    const { data: timeline } = await supabaseClient
-      .from("timeline")
-      .select("*")
-      .eq("page_id", page.id)
-      .order("created_at", { ascending: true });
+    const photos = photosResult.data || [];
+    const messages = messagesResult.data || [];
+    const timeline = timelineResult.data || [];
 
     return {
       recipientName: page.recipient_name,

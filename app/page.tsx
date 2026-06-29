@@ -15,6 +15,7 @@ import ThemeToggle from "@/components/theme-toggle";
 import PasscodeScreen from "@/components/passcode-screen";
 import CountdownScreen from "@/components/countdown-screen";
 import CameraGallery from "@/components/camera-gallery";
+import MemoryTimeline from "@/components/memory-timeline";
 import CakeSlice from "@/components/cake-slice";
 import BirthdayLetter from "@/components/birthday-letter";
 import WishesWall from "@/components/wishes-wall";
@@ -24,7 +25,7 @@ import MusicPlayer from "@/components/music-player";
 // Hooks
 import { useAudio } from "@/hooks/useAudio";
 import configData from "@/config/birthday-config.json";
-import { getBirthdayPage } from "@/lib/supabase";
+import { getBirthdayPage, readFromLocalStorage } from "@/lib/supabase";
 import { parseBirthdayDate } from "@/lib/date";
 import { BirthdayConfig } from "@/config/types";
 
@@ -68,19 +69,31 @@ function HomeContent() {
     if (dateParam) setTargetDate(dateParam);
   }, [searchParams]);
 
-  // Load saved config from localStorage (admin edits)
+  // Load saved config with cache-first SWR pattern to eliminate loading delays
   useEffect(() => {
+    // 1. Instantly apply local storage cached values on mount
+    const cached = readFromLocalStorage("default");
+    if (cached) {
+      setFriendName(cached.recipientName);
+      if (cached.secretCode) setSecretCode(cached.secretCode);
+      if (cached.birthdayDate) setTargetDate(cached.birthdayDate);
+      setMusicConfig(cached.music);
+    }
+
+    // 2. Fetch latest configurations from database in background
     getBirthdayPage("default").then((cfg) => {
       setFriendName(cfg.recipientName);
       if (cfg.secretCode) setSecretCode(cfg.secretCode);
       if (cfg.birthdayDate) setTargetDate(cfg.birthdayDate);
       setMusicConfig(cfg.music);
+    }).catch(err => {
+      console.error("Supabase root page background fetch error:", err);
     });
   }, []);
 
   const handleUnlockSuccess = () => {
     // If birthday is in the future, show countdown; otherwise go straight in
-    const isFuture = parseBirthdayDate(targetDate).getTime() > Date.now();
+    const isFuture = new Date(targetDate).getTime() > Date.now();
     if (isFuture) {
       setShowCountdown(true);
     } else {
@@ -101,16 +114,14 @@ function HomeContent() {
       <svg viewBox="0 0 100 100" className="w-full h-full">
         <rect x="15" y="40" width="70" height="50" rx="6" fill="#f43f5e" stroke="white" strokeWidth="4" />
         <rect x="10" y="30" width="80" height="15" rx="4" fill="#ef4444" stroke="white" strokeWidth="4" />
-        {/* Ribbon Vertical */}
         <rect x="44" y="30" width="12" height="60" fill="#f59e0b" />
-        {/* Bow */}
         <circle cx="40" cy="22" r="10" fill="none" stroke="#f59e0b" strokeWidth="6" />
         <circle cx="60" cy="22" r="10" fill="none" stroke="#f59e0b" strokeWidth="6" />
       </svg>
     </div>
   );
 
-  // Cursive Blue "Birthday!" Bubble SVG Logo
+  // Blue Cursive "Birthday!" Bubble SVG Logo
   const BirthdayBubble = () => (
     <div className="w-48 h-20 relative select-none pointer-events-none filter drop-shadow-[0_8px_16px_rgba(59,130,246,0.2)]">
       <svg viewBox="0 0 200 80" className="w-full h-full">
@@ -235,6 +246,11 @@ function HomeContent() {
             {/* Camera memories slider clicker section */}
             <div id="camera-gallery" className="w-full border-t border-slate-200/20">
               <CameraGallery photos={configData.photos} playSfx={playSfx} />
+            </div>
+
+            {/* Journey Timeline milestones section */}
+            <div id="journey-timeline" className="w-full border-t border-slate-200/20 bg-white/5">
+              <MemoryTimeline timeline={configData.timeline} />
             </div>
 
             {/* Cake Slicing Ritual Section */}

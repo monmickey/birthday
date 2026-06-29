@@ -15,6 +15,7 @@ import ThemeToggle from "@/components/theme-toggle";
 import PasscodeScreen from "@/components/passcode-screen";
 import CountdownScreen from "@/components/countdown-screen";
 import CameraGallery from "@/components/camera-gallery";
+import MemoryTimeline from "@/components/memory-timeline";
 import CakeSlice from "@/components/cake-slice";
 import BirthdayLetter from "@/components/birthday-letter";
 import WishesWall from "@/components/wishes-wall";
@@ -23,7 +24,7 @@ import MusicPlayer from "@/components/music-player";
 
 // Hooks & Database
 import { useAudio } from "@/hooks/useAudio";
-import { getBirthdayPage } from "@/lib/supabase";
+import { getBirthdayPage, readFromLocalStorage } from "@/lib/supabase";
 import { parseBirthdayDate } from "@/lib/date";
 import { BirthdayConfig } from "@/config/types";
 
@@ -58,15 +59,38 @@ function BirthdayPageContent() {
     }
   }, [isDark]);
 
-  // Dynamic config fetch
+  // Dynamic config fetch with SWR Cache-First loading pattern
   useEffect(() => {
+    let active = true;
+
     async function loadData() {
-      setLoading(true);
-      const data = await getBirthdayPage(slug);
-      setConfig(data);
-      setLoading(false);
+      // 1. Instantly load from localStorage if cached to bypass loading spinner
+      const cached = readFromLocalStorage(slug);
+      if (cached) {
+        setConfig(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
+      // 2. Fetch fresh data from database in background
+      try {
+        const data = await getBirthdayPage(slug);
+        if (active) {
+          setConfig(data);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Supabase dynamic page fetch error:", err);
+        if (active) setLoading(false);
+      }
     }
+
     loadData();
+
+    return () => {
+      active = false;
+    };
   }, [slug]);
 
   // Override config parameters if query strings exist
@@ -91,7 +115,7 @@ function BirthdayPageContent() {
 
   const handleUnlockSuccess = () => {
     // If birthday is in the future, show countdown; otherwise go straight in
-    const isFuture = config && parseBirthdayDate(config.birthdayDate).getTime() > Date.now();
+    const isFuture = config && new Date(config.birthdayDate).getTime() > Date.now();
     if (isFuture) {
       setShowCountdown(true);
     } else {
@@ -209,7 +233,7 @@ function BirthdayPageContent() {
                 A Birthday Made Just For You
               </span>
 
-              <h1 className="text-4xl md:text-6xl font-black text-slate-800 tracking-tight font-serif mb-4">
+              <h1 className="text-4xl md:text-6xl font-black tracking-tight font-serif mb-4">
                 Happy Birthday, <br />
                 <span className="text-sky-600 block mt-2">{config.recipientName}</span>
               </h1>
@@ -221,7 +245,7 @@ function BirthdayPageContent() {
               </div>
 
               <p className="text-xs md:text-sm text-slate-500 font-bold max-w-sm mb-12 leading-relaxed">
-                {config.photos.length}   Some little memories. One very special person. Happy Birthday, {config.recipientName} ✨
+                 {config.photos.length}   Some little memories. One very special person. Happy Birthday, {config.recipientName} ✨
               </p>
 
               <motion.div
@@ -243,6 +267,11 @@ function BirthdayPageContent() {
             {/* Camera clicker polaroids section */}
             <div id="camera-gallery" className="w-full border-t border-slate-200/20">
               <CameraGallery photos={config.photos} playSfx={playSfx} />
+            </div>
+
+            {/* Journey Timeline milestones section */}
+            <div id="journey-timeline" className="w-full border-t border-slate-200/20 bg-white/5">
+              <MemoryTimeline timeline={config.timeline} />
             </div>
 
             {/* Cake Slicing section */}
