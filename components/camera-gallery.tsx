@@ -160,7 +160,11 @@ export default function CameraGallery({ photos = [], playSfx }: CameraGalleryPro
 
               {/* Photo viewport */}
               <div className="relative w-full h-[75%] bg-neutral-900 overflow-hidden rounded-sm">
-                <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
+                <img
+                  src={item.url}
+                  alt={item.title}
+                  className="absolute inset-0 w-full h-full object-cover object-center"
+                />
               </div>
 
               {/* Polaroid bottom caption */}

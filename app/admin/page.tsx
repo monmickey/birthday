@@ -45,7 +45,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Helper to convert files to base64
+  // Helper to convert & resize image files to compressed base64
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     type: "photo" | "timeline"
@@ -55,12 +55,33 @@ export default function AdminDashboard() {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64String = reader.result as string;
-      if (type === "photo") {
-        setNewPhoto((prev) => ({ ...prev, url: base64String }));
-      } else {
-        setNewTimeline((prev) => ({ ...prev, image: base64String }));
-      }
+      const img = new window.Image();
+      img.onload = () => {
+        const MAX = 800;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) {
+            height = Math.round((height * MAX) / width);
+            width = MAX;
+          } else {
+            width = Math.round((width * MAX) / height);
+            height = MAX;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.82);
+        if (type === "photo") {
+          setNewPhoto((prev) => ({ ...prev, url: compressed }));
+        } else {
+          setNewTimeline((prev) => ({ ...prev, image: compressed }));
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };
