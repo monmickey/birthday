@@ -257,14 +257,22 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="text-xs uppercase font-bold tracking-widest text-white/50 block mb-2">
-                  Birthday Date (ISO String)
+                  Birthday Date
                 </label>
                 <input
                   type="datetime-local"
-                  value={config.birthdayDate.substring(0, 16)}
-                  onChange={(e) => setConfig({ ...config, birthdayDate: new Date(e.target.value).toISOString() })}
-                  className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-semibold"
+                  value={config.birthdayDate ? config.birthdayDate.substring(0, 16) : ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) return;
+                    // Append seconds so it's a valid ISO-like string preserving local time
+                    setConfig({ ...config, birthdayDate: val + ":00" });
+                  }}
+                  className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-semibold [color-scheme:dark]"
                 />
+                <p className="text-[10px] text-white/40 mt-1.5 font-bold">
+                  Set the birthday date and time. The countdown will display until this moment.
+                </p>
               </div>
 
               <div>
