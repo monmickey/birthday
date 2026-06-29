@@ -14,29 +14,68 @@ export const supabaseClient = isSupabaseConfigured
 // LocalStorage Helper Keys
 const LOCAL_STORAGE_KEY_PREFIX = "birthday_surprise_page_";
 
-/**
- * Gets a complete BirthdayConfig for a given slug.
- * Resolves from Supabase if configured, or falls back to localStorage/defaultData.
- */
-export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
+/** Read from localStorage (client-side only) */
+function readFromLocalStorage(slug: string): BirthdayConfig | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`);
+    return stored ? (JSON.parse(stored) as BirthdayConfig) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Write to localStorage (client-side only) */
+function writeToLocalStorage(slug: string, config: BirthdayConfig): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`, JSON.stringify(config));
+}
+
+/** Build the default config with correct secretCode */
+function buildDefault(): BirthdayConfig {
+  return {
+    ...defaultData,
+    secretCode: (defaultData as any).secretCode || "2026",
+  } as BirthdayConfig;
+}
+
+// ============================================================
+// Test connection — returns true if tables are accessible
+// ============================================================
+export async function testSupabaseConnection(): Promise<{
+  ok: boolean;
+  message: string;
+}> {
   if (!isSupabaseConfigured || !supabaseClient) {
-    console.warn("Supabase not configured. Falling back to local storage.");
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`);
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch (e) {
-          console.error("Error parsing local storage data", e);
-        }
-      }
+    return { ok: false, message: "Supabase not configured (missing env variables)." };
+  }
+  try {
+    const { error } = await supabaseClient
+      .from("birthday_pages")
+      .select("id")
+      .limit(1);
+    if (error) {
+      return {
+        ok: false,
+        message: `DB error: ${error.message}. Run the SQL schema first.`,
+      };
     }
-    // Return default template data
+    return { ok: true, message: "Connected to Supabase successfully!" };
+  } catch (e: any) {
     return {
-      ...defaultData,
-      recipientName: defaultData.recipientName,
-      secretCode: defaultData.secretCode || "2026",
-    } as BirthdayConfig;
+      ok: false,
+      message: `Network error: ${e?.message || "Failed to fetch"}. Check your URL/key.`,
+    };
+  }
+}
+
+// ============================================================
+// getBirthdayPage
+// ============================================================
+export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
+  // --- No Supabase configured: use localStorage ---
+  if (!isSupabaseConfigured || !supabaseClient) {
+    return readFromLocalStorage(slug) ?? buildDefault();
   }
 
   try {
@@ -48,32 +87,32 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
       .single();
 
     if (pageError || !page) {
-      console.warn(`Slug "${slug}" not found in Supabase. Returning template fallback.`);
-      return defaultData as BirthdayConfig;
+      // Table may not exist yet — fall back gracefully
+      console.warn(`Supabase: slug "${slug}" not found. Falling back to localStorage/default.`);
+      return readFromLocalStorage(slug) ?? buildDefault();
     }
 
     // 2. Fetch linked photos
-    const { data: photos, error: photosError } = await supabaseClient
+    const { data: photos } = await supabaseClient
       .from("photos")
       .select("*")
       .eq("page_id", page.id)
       .order("created_at", { ascending: true });
 
     // 3. Fetch linked wishes/messages
-    const { data: messages, error: messagesError } = await supabaseClient
+    const { data: messages } = await supabaseClient
       .from("messages")
       .select("*")
       .eq("page_id", page.id)
       .order("created_at", { ascending: true });
 
     // 4. Fetch linked timeline milestones
-    const { data: timeline, error: timelineError } = await supabaseClient
+    const { data: timeline } = await supabaseClient
       .from("timeline")
       .select("*")
       .eq("page_id", page.id)
       .order("created_at", { ascending: true });
 
-    // Combine database table structures into BirthdayConfig interface
     return {
       recipientName: page.recipient_name,
       secretCode: page.secret_code || "2026",
@@ -99,36 +138,35 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
       })),
       personalLetter: page.personal_letter,
       cakeStyle: {
-        layers: page.theme.layers || 3,
-        frostingColor: page.theme.frostingColor || "#ec4899",
-        candleCount: page.theme.candleCount || 5,
+        layers: page.theme?.layers || 3,
+        frostingColor: page.theme?.frostingColor || "#ec4899",
+        candleCount: page.theme?.candleCount || 5,
       },
     };
-  } catch (error) {
-    console.error("Supabase load failed. Falling back to default data.", error);
-    return defaultData as BirthdayConfig;
+  } catch (error: any) {
+    console.error("Supabase load failed. Falling back to localStorage.", error?.message || error);
+    // Always fall back to localStorage, never crash
+    return readFromLocalStorage(slug) ?? buildDefault();
   }
 }
 
-/**
- * Saves a complete BirthdayConfig for a given slug.
- * Resolves to Supabase if configured, or falls back to localStorage.
- */
-export async function saveBirthdayPage(slug: string, config: BirthdayConfig): Promise<boolean> {
+// ============================================================
+// saveBirthdayPage
+// ============================================================
+export async function saveBirthdayPage(
+  slug: string,
+  config: BirthdayConfig
+): Promise<boolean> {
+  // --- No Supabase configured: save to localStorage only ---
   if (!isSupabaseConfigured || !supabaseClient) {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${slug}`, JSON.stringify(config));
-      // Also write to default to sync fallback
-      if (slug === "default") {
-        localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}default`, JSON.stringify(config));
-      }
-      return true;
-    }
-    return false;
+    writeToLocalStorage(slug, config);
+    return true;
   }
 
+  // Always mirror to localStorage as instant offline cache
+  writeToLocalStorage(slug, config);
+
   try {
-    // 1. Insert or update the birthday_pages table
     const pagePayload = {
       slug,
       recipient_name: config.recipientName,
@@ -144,76 +182,66 @@ export async function saveBirthdayPage(slug: string, config: BirthdayConfig): Pr
       personal_letter: config.personalLetter,
     };
 
-    // Check if page already exists
-    const { data: existingPage } = await supabaseClient
+    // Upsert the main page row
+    const { data: upserted, error: upsertError } = await supabaseClient
       .from("birthday_pages")
+      .upsert(pagePayload, { onConflict: "slug" })
       .select("id")
-      .eq("slug", slug)
       .single();
 
-    let pageId = existingPage?.id;
-
-    if (pageId) {
-      const { error: updateError } = await supabaseClient
-        .from("birthday_pages")
-        .update(pagePayload)
-        .eq("id", pageId);
-
-      if (updateError) throw updateError;
-    } else {
-      const { data: newPage, error: insertError } = await supabaseClient
-        .from("birthday_pages")
-        .insert(pagePayload)
-        .select("id")
-        .single();
-
-      if (insertError) throw insertError;
-      pageId = newPage.id;
+    if (upsertError || !upserted) {
+      console.error("Supabase upsert failed:", upsertError?.message);
+      return false;
     }
 
-    // 2. Refresh photos
+    const pageId = upserted.id;
+
+    // Refresh photos
     await supabaseClient.from("photos").delete().eq("page_id", pageId);
     if (config.photos.length > 0) {
-      const photosPayload = config.photos.map((p) => ({
-        page_id: pageId,
-        url: p.url,
-        title: p.title,
-        description: p.description,
-        date: p.date,
-      }));
-      const { error: photoErr } = await supabaseClient.from("photos").insert(photosPayload);
+      const { error: photoErr } = await supabaseClient.from("photos").insert(
+        config.photos.map((p) => ({
+          page_id: pageId,
+          url: p.url,
+          title: p.title,
+          description: p.description,
+          date: p.date,
+        }))
+      );
       if (photoErr) throw photoErr;
     }
 
-    // 3. Refresh wishes/messages
+    // Refresh wishes/messages
     await supabaseClient.from("messages").delete().eq("page_id", pageId);
     if (config.wishes.length > 0) {
-      const wishesPayload = config.wishes.map((w) => ({
-        page_id: pageId,
-        text: w.text,
-        sender: w.sender,
-      }));
-      const { error: wishErr } = await supabaseClient.from("messages").insert(wishesPayload);
+      const { error: wishErr } = await supabaseClient.from("messages").insert(
+        config.wishes.map((w) => ({
+          page_id: pageId,
+          text: w.text,
+          sender: w.sender,
+        }))
+      );
       if (wishErr) throw wishErr;
     }
 
-    // 4. Refresh timeline
+    // Refresh timeline
     await supabaseClient.from("timeline").delete().eq("page_id", pageId);
     if (config.timeline.length > 0) {
-      const timelinePayload = config.timeline.map((t) => ({
-        page_id: pageId,
-        date: t.date,
-        title: t.title,
-        description: t.description,
-        image: t.image,
-      }));
-      const { error: timeErr } = await supabaseClient.from("timeline").insert(timelinePayload);
+      const { error: timeErr } = await supabaseClient.from("timeline").insert(
+        config.timeline.map((t) => ({
+          page_id: pageId,
+          date: t.date,
+          title: t.title,
+          description: t.description,
+          image: t.image,
+        }))
+      );
       if (timeErr) throw timeErr;
     }
 
     return true;
-  } catch (error) {
-    console.error("Failed to save configuration to Supabase", error);
+  } catch (error: any) {
+    console.error("Supabase save failed:", error?.message || error);
     return false;
   }
 }

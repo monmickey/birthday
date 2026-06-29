@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { FaHome, FaImage, FaHeart, FaMusic, FaCheck, FaTimes, FaPlus, FaTrash, FaLink, FaCalendarAlt, FaSlidersH, FaUser } from "react-icons/fa";
-import { getBirthdayPage, saveBirthdayPage } from "@/lib/supabase";
+import { getBirthdayPage, saveBirthdayPage, testSupabaseConnection, isSupabaseConfigured } from "@/lib/supabase";
 import { BirthdayConfig, PhotoItem, WishItem, TimelineItem } from "@/config/types";
 import defaultData from "@/config/birthday-config.json";
 
@@ -15,6 +15,12 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [dbStatus, setDbStatus] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Test Supabase connection on mount
+  useEffect(() => {
+    testSupabaseConnection().then(setDbStatus);
+  }, []);
 
   // For adding new items
   const [newPhoto, setNewPhoto] = useState<Partial<PhotoItem>>({ title: "", description: "", date: "" });
@@ -167,6 +173,27 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-dark-bg text-gray-100 flex flex-col md:flex-row font-sans">
+      {/* DB Connection Banner */}
+      {dbStatus && (
+        <div className={`w-full px-5 py-2.5 text-xs font-bold flex items-center gap-3 ${
+          dbStatus.ok
+            ? "bg-emerald-500/15 border-b border-emerald-500/30 text-emerald-400"
+            : "bg-red-500/15 border-b border-red-500/30 text-red-400"
+        }`}>
+          <span>{dbStatus.ok ? "✅" : "❌"}</span>
+          <span>{dbStatus.message}</span>
+          {!dbStatus.ok && (
+            <a
+              href="https://supabase.com/dashboard/project/baokxpivmuoeknolnkal/sql/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto underline hover:text-white transition-colors shrink-0"
+            >
+              Open SQL Editor →
+            </a>
+          )}
+        </div>
+      )}
       {/* Sidebar navigation */}
       <aside className="w-full md:w-64 bg-[#0a0522] border-b md:border-b-0 md:border-r border-white/5 p-6 flex flex-col justify-between">
         <div>
