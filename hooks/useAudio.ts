@@ -106,7 +106,7 @@ export function useAudio(musicConfig: MusicConfig = configData.music) {
 
     bgMusicRef.current = new Howl({
       src: [resolvedAudioUrl],
-      html5: !isBase64, // Disable HTML5 audio for base64 to avoid browser player limitations
+      html5: true, // Always use HTML5 audio for background music to handle larger files & base64 cleanly
       format: formats,
       loop: true,
       volume: initialVolume,
@@ -155,20 +155,15 @@ export function useAudio(musicConfig: MusicConfig = configData.music) {
     if (!bgMusicRef.current) return;
     if (!bgMusicRef.current.playing()) {
       bgMusicRef.current.play();
-      bgMusicRef.current.fade(0, volume, 2000);
+      bgMusicRef.current.volume(volume);
       setIsPlayingBg(true);
     }
   };
 
   const pauseBgMusic = () => {
     if (!bgMusicRef.current) return;
-    if (bgMusicRef.current.playing()) {
-      bgMusicRef.current.fade(volume, 0, 1000);
-      setTimeout(() => {
-        bgMusicRef.current?.pause();
-        setIsPlayingBg(false);
-      }, 1000);
-    }
+    bgMusicRef.current.pause();
+    setIsPlayingBg(false);
   };
 
   const stopBgMusic = () => {
