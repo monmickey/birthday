@@ -266,6 +266,23 @@ export default function AdminDashboard() {
                   className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-semibold"
                 />
               </div>
+
+              <div>
+                <label className="text-xs uppercase font-bold tracking-widest text-white/50 block mb-2">
+                  Keypad Unlock Passcode
+                </label>
+                <input
+                  type="text"
+                  maxLength={4}
+                  value={config.secretCode || ""}
+                  onChange={(e) => setConfig({ ...config, secretCode: e.target.value.replace(/[^0-9]/g, "") })}
+                  placeholder="e.g. 2026"
+                  className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-mono font-semibold"
+                />
+                <p className="text-[10px] text-white/40 mt-1.5 font-bold">
+                  Enter a 4-digit numeric code that the recipient must enter to open the surprise.
+                </p>
+              </div>
             </div>
           )}
 
