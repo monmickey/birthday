@@ -7,29 +7,6 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
-// Custom fetch wrapper with a timeout to prevent hanging connections (e.g., when Supabase is paused or offline)
-const FETCH_TIMEOUT_MS = 4000; // 4 seconds
-
-const fetchWithTimeout = (url: URL | RequestInfo, options?: RequestInit): Promise<Response> => {
-  const controller = new AbortController();
-  const id = setTimeout(() => {
-    console.warn(`[fetchWithTimeout] Request to ${url} timed out! Aborting...`);
-    controller.abort();
-  }, FETCH_TIMEOUT_MS);
-
-  console.log(`[fetchWithTimeout] Dispatching fetch to: ${url}`);
-  return fetch(url, {
-    ...options,
-    signal: controller.signal,
-  }).then((res) => {
-    console.log(`[fetchWithTimeout] Response received from ${url}: Status ${res.status}`);
-    return res;
-  }).catch((err) => {
-    console.error(`[fetchWithTimeout] Fetch to ${url} failed:`, err);
-    throw err;
-  }).finally(() => clearTimeout(id));
-};
-
 // Cache the Supabase client globally in development to prevent "Multiple GoTrueClient" warnings during HMR
 const globalForSupabase = globalThis as unknown as {
   supabaseClient: any;
@@ -38,9 +15,6 @@ const globalForSupabase = globalThis as unknown as {
 export const supabaseClient = globalForSupabase.supabaseClient || (
   isSupabaseConfigured
     ? createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: fetchWithTimeout,
-        },
         auth: {
           persistSession: false, // Prevents local storage collisions and multiple GoTrueClient warnings since auth is not used
         },
@@ -171,7 +145,6 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
         secret_code,
         birthday_date,
         theme,
-        music,
         personal_letter,
         photos(id, url, title, description, date),
         messages(text, sender),
