@@ -25,6 +25,7 @@ import MusicPlayer from "@/components/music-player";
 import { useAudio } from "@/hooks/useAudio";
 import configData from "@/config/birthday-config.json";
 import { getBirthdayPage } from "@/lib/supabase";
+import { parseBirthdayDate } from "@/lib/date";
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -42,7 +43,7 @@ function HomeContent() {
   const [showCountdown, setShowCountdown] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [friendName, setFriendName] = useState(configData.recipientName);
-  const [secretCode, setSecretCode] = useState(configData.secretCode || "2026");
+  const [secretCode, setSecretCode] = useState(configData.secretCode || "0541");
   const [targetDate, setTargetDate] = useState(configData.birthdayDate);
 
   useEffect(() => {
@@ -74,7 +75,7 @@ function HomeContent() {
 
   const handleUnlockSuccess = () => {
     // If birthday is in the future, show countdown; otherwise go straight in
-    const isFuture = new Date(targetDate).getTime() > Date.now();
+    const isFuture = parseBirthdayDate(targetDate).getTime() > Date.now();
     if (isFuture) {
       setShowCountdown(true);
     } else {
@@ -197,7 +198,7 @@ function HomeContent() {
               {/* Folder badge year display */}
               <div className="flex items-center justify-center gap-1 bg-white/60 backdrop-blur-sm border border-slate-200/50 rounded-full px-5 py-2 shadow-sm mb-6 select-none font-semibold text-slate-700 text-sm">
                 <span>📂</span>
-                <span className="font-mono">{new Date(targetDate).getFullYear()}</span>
+                <span className="font-mono">{parseBirthdayDate(targetDate).getFullYear()}</span>
                 <span>📂</span>
               </div>
 
@@ -230,12 +231,12 @@ function HomeContent() {
 
             {/* Cake Slicing Ritual Section */}
             <div id="cake-slice" className="w-full border-t border-slate-200/20 bg-white/5">
-              <CakeSlice 
-                playSfx={playSfx} 
+              <CakeSlice
+                playSfx={playSfx}
                 onSliceComplete={() => {
                   const target = document.getElementById("birthday-letter");
                   if (target) target.scrollIntoView({ behavior: "smooth" });
-                }} 
+                }}
               />
             </div>
 

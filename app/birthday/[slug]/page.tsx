@@ -24,6 +24,7 @@ import MusicPlayer from "@/components/music-player";
 // Hooks & Database
 import { useAudio } from "@/hooks/useAudio";
 import { getBirthdayPage } from "@/lib/supabase";
+import { parseBirthdayDate } from "@/lib/date";
 import { BirthdayConfig } from "@/config/types";
 
 function BirthdayPageContent() {
@@ -88,7 +89,7 @@ function BirthdayPageContent() {
 
   const handleUnlockSuccess = () => {
     // If birthday is in the future, show countdown; otherwise go straight in
-    const isFuture = config && new Date(config.birthdayDate).getTime() > Date.now();
+    const isFuture = config && parseBirthdayDate(config.birthdayDate).getTime() > Date.now();
     if (isFuture) {
       setShowCountdown(true);
     } else {
@@ -155,7 +156,7 @@ function BirthdayPageContent() {
           >
             <PasscodeScreen
               recipientName={config.recipientName}
-              correctCode={config.secretCode || "2026"}
+              correctCode={config.secretCode || "0541"}
               onSuccess={handleUnlockSuccess}
               playSfx={playSfx}
             />
@@ -210,12 +211,12 @@ function BirthdayPageContent() {
 
               <div className="flex items-center justify-center gap-1 bg-white/60 backdrop-blur-sm border border-slate-200/50 rounded-full px-5 py-2 shadow-sm mb-6 select-none font-semibold text-slate-700 text-sm">
                 <span>📂</span>
-                <span className="font-mono">{new Date(config.birthdayDate).getFullYear()}</span>
+                <span className="font-mono">{parseBirthdayDate(config.birthdayDate).getFullYear()}</span>
                 <span>📂</span>
               </div>
 
               <p className="text-xs md:text-sm text-slate-500 font-bold max-w-sm mb-12 leading-relaxed">
-                 {config.photos.length}   Some little memories. One very special person. Happy Birthday, {config.recipientName} ✨
+                {config.photos.length}   Some little memories. One very special person. Happy Birthday, {config.recipientName} ✨
               </p>
 
               <motion.div

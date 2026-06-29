@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { parseBirthdayDate } from "@/lib/date";
 
 interface CountdownScreenProps {
   targetDate: string;
@@ -19,7 +20,7 @@ export default function CountdownScreen({ targetDate, onComplete, playClick }: C
   const [isDone, setIsDone] = useState(false);
 
   useEffect(() => {
-    const target = new Date(targetDate).getTime();
+    const target = parseBirthdayDate(targetDate).getTime();
 
     const calculateTime = () => {
       const now = Date.now();
@@ -105,7 +106,7 @@ export default function CountdownScreen({ targetDate, onComplete, playClick }: C
             </span>
 
             <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-8">
-              Happy Birthday!
+              Birthday Countdown
             </h1>
 
             {/* Countdown Grid */}

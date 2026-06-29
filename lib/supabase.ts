@@ -35,7 +35,7 @@ function writeToLocalStorage(slug: string, config: BirthdayConfig): void {
 function buildDefault(): BirthdayConfig {
   return {
     ...defaultData,
-    secretCode: (defaultData as any).secretCode || "2026",
+    secretCode: (defaultData as any).secretCode || "0541",
   } as BirthdayConfig;
 }
 
@@ -115,7 +115,7 @@ export async function getBirthdayPage(slug: string): Promise<BirthdayConfig> {
 
     return {
       recipientName: page.recipient_name,
-      secretCode: page.secret_code || "2026",
+      secretCode: page.secret_code || "0541",
       birthdayDate: page.birthday_date,
       theme: page.theme,
       music: page.music,
@@ -170,7 +170,7 @@ export async function saveBirthdayPage(
     const pagePayload = {
       slug,
       recipient_name: config.recipientName,
-      secret_code: config.secretCode || "2026",
+      secret_code: config.secretCode || "0541",
       birthday_date: config.birthdayDate,
       theme: config.theme,
       music: config.music,

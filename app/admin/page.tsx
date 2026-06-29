@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { FaHome, FaImage, FaHeart, FaMusic, FaCheck, FaTimes, FaPlus, FaTrash, FaLink, FaCalendarAlt, FaSlidersH, FaUser } from "react-icons/fa";
+import { FaHome, FaImage, FaHeart, FaMusic, FaCheck, FaTrash, FaLink, FaCalendarAlt, FaSlidersH, FaUser, FaKey, FaEye, FaEyeSlash } from "react-icons/fa";
 import { getBirthdayPage, saveBirthdayPage } from "@/lib/supabase";
+import { formatDateTimeLocalValue } from "@/lib/date";
 import { BirthdayConfig, PhotoItem, WishItem, TimelineItem } from "@/config/types";
-import defaultData from "@/config/birthday-config.json";
 
 type TabType = "general" | "photos" | "timeline" | "wishes" | "letter" | "theme" | "settings";
 
@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showSecretCode, setShowSecretCode] = useState(false);
 
   // For adding new items
   const [newPhoto, setNewPhoto] = useState<Partial<PhotoItem>>({ title: "", description: "", date: "" });
@@ -33,6 +34,10 @@ export default function AdminDashboard() {
 
   const handleSave = async () => {
     if (!config) return;
+    if (!/^\d{4}$/.test(config.secretCode || "")) {
+      alert("Secret passcode must be exactly 4 digits.");
+      return;
+    }
     setSaving(true);
     setSaveSuccess(false);
     const success = await saveBirthdayPage(slug, config);
@@ -144,6 +149,9 @@ export default function AdminDashboard() {
     );
   }
 
+  const birthdayDateTime = formatDateTimeLocalValue(config.birthdayDate);
+  const [birthdayDateValue, birthdayTimeValue] = birthdayDateTime.split("T");
+
   return (
     <div className="min-h-screen bg-dark-bg text-gray-100 flex flex-col md:flex-row font-sans">
       {/* Sidebar navigation */}
@@ -180,7 +188,7 @@ export default function AdminDashboard() {
               { id: "wishes", label: "Wishes Wall", icon: <FaHeart /> },
               { id: "letter", label: "Message Letter", icon: <FaHome /> },
               { id: "theme", label: "Theme & Music", icon: <FaMusic /> },
-              { id: "settings", label: "Toggles", icon: <FaSlidersH /> },
+              { id: "settings", label: "Passcode & Toggles", icon: <FaSlidersH /> },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -256,14 +264,47 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="text-xs uppercase font-bold tracking-widest text-white/50 block mb-2">
-                  Birthday Date (ISO String)
+                  Birthday Date & Time
                 </label>
-                <input
-                  type="datetime-local"
-                  value={config.birthdayDate.substring(0, 16)}
-                  onChange={(e) => setConfig({ ...config, birthdayDate: new Date(e.target.value).toISOString() })}
-                  className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-semibold"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-white/35 block mb-2">
+                      Date
+                    </span>
+                    <input
+                      type="date"
+                      value={birthdayDateValue || ""}
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        setConfig({
+                          ...config,
+                          birthdayDate: `${e.target.value}T${birthdayTimeValue || "00:00"}`,
+                        });
+                      }}
+                      className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-semibold [color-scheme:dark]"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-white/35 block mb-2">
+                      Time
+                    </span>
+                    <input
+                      type="time"
+                      value={birthdayTimeValue || "00:00"}
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        setConfig({
+                          ...config,
+                          birthdayDate: `${birthdayDateValue || new Date().toISOString().slice(0, 10)}T${e.target.value}`,
+                        });
+                      }}
+                      className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-semibold [color-scheme:dark]"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-white/40 mt-2">
+                  Countdown uses this exact local date and time.
+                </p>
               </div>
             </div>
           )}
@@ -467,7 +508,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {config.wishes.map((item, idx) => (
                     <div key={idx} className="glass-panel p-4 rounded-2xl flex flex-col justify-between border border-white/5 gap-3 h-32 text-left">
-                      <p className="text-xs text-white/80 line-clamp-3">"{item.text}"</p>
+                      <p className="text-xs text-white/80 line-clamp-3">&quot;{item.text}&quot;</p>
                       <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
                         <span className="text-[10px] font-bold text-gradient-purple-pink">— {item.sender}</span>
                         <button
@@ -623,6 +664,52 @@ export default function AdminDashboard() {
 
           {activeTab === "settings" && (
             <div className="space-y-6">
+              <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/20 text-primary flex items-center justify-center">
+                    <FaKey size={14} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Secret Passcode</h3>
+                    <p className="text-xs text-white/50 mt-1">This is the 4-digit code visitors enter before opening the surprise page.</p>
+                  </div>
+                </div>
+
+                <div className="max-w-sm">
+                  <label className="text-[10px] uppercase font-bold tracking-widest text-white/50 block mb-2">
+                    Page Password
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type={showSecretCode ? "text" : "password"}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      value={config.secretCode || ""}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          secretCode: e.target.value.replace(/\D/g, "").slice(0, 4),
+                        })
+                      }
+                      className="w-full px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary text-sm font-mono tracking-[0.45em]"
+                      placeholder="0000"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecretCode((value) => !value)}
+                      aria-label={showSecretCode ? "Hide passcode" : "Show passcode"}
+                      className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 text-white/65 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors"
+                    >
+                      {showSecretCode ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-white/40 mt-2">
+                    Use exactly 4 digits so it matches the keypad on the birthday page.
+                  </p>
+                </div>
+              </div>
+
               <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-white">Surprise Page Features</h3>
                 <p className="text-xs text-white/50">Configure interactive effects running across sections.</p>
